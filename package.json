@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "start": "node index.js",
-    "dev": "nodemon src/index.js"
+    "dev": "nodemon -r dotenv/config --experimental-json-modules src/index.js"
   },
   "author": "Mohit Ranjan",
   "license": "ISC",
@@ -19,6 +19,7 @@
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
     "mogoose": "^0.0.1-security",
+    "mongoose": "^9.9.4",
     "multer": "^2.3.0"
   }
 }
