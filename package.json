@@ -20,6 +20,8 @@
     "express": "^5.2.1",
     "mogoose": "^0.0.1-security",
     "mongoose": "^9.9.4",
-    "multer": "^2.3.0"
+    "multer": "^2.3.0",
+    "nodemailer": "^10.0.0",
+    "zod": "^4.5.4"
   }
 }
