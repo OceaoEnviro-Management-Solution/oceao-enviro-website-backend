@@ -17,4 +17,10 @@ app.use(express.urlencoded({
 app.use(express.static("public"))
 app.use(cookieParser())
 
+import { queryRouter } from "./routes/query.route.js"
+
+app.use("/api/v1/query", queryRouter)
+app.use("/health", (req, res) => {
+    res.status(200).json({ message: "ok" })
+})
 export { app }

@@ -1,6 +1,6 @@
 import "dotenv/config";
-import { emailConnectionVerify } from "../services/email/email.connections.js";
-import { sendMail } from "../services/email/email.services.js";
+import { emailConnectionVerify } from "../src/services/email/email.connections.js";
+import { sendMail } from "../src/services/email/email.services.js";
 
 const testEmailConnection = async () => {
     try {

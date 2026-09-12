@@ -50,6 +50,6 @@ const querySchema = z.object({
         .min(10, "Query must contain at least 10 characters")
         .max(5000, "Query cannot exceed 5000 characters")
 
-}).strict();
+});
 
 export { querySchema };
