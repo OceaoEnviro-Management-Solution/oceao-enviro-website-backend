@@ -19,7 +19,7 @@ const queryValidate = asyncHandler(async (req, res, next) => {
     if (!validationResult.success) {
         console.error("Zod Validation Errors:", validationResult.error.format());
         const errorMessages = validationResult.error.flatten().fieldErrors;
-        return next(new ApiError(400, "Validation failed", errorMessages));
+        throw new ApiError(400, "Validation failed", errorMessages);
     }
     req.body = validationResult.data;
     next();

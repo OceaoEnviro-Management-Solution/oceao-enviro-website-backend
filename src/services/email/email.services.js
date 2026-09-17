@@ -1,6 +1,6 @@
 import { transporter } from "./email.transpoter.js";
 
-const sendMailService = async ({ from, to, subject, text, html, replyTo }) => {
+const sendMailService = async ({ from, to, subject, text, html, replyTo, attachments }) => {
 
     const mailOptions = {
         from,
@@ -8,7 +8,8 @@ const sendMailService = async ({ from, to, subject, text, html, replyTo }) => {
         subject,
         text,
         html,
-        replyTo
+        replyTo,
+        attachments
     }
 
     const result = await transporter.sendMail(mailOptions);

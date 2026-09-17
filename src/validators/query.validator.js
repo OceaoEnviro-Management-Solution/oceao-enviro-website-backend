@@ -16,7 +16,7 @@ const querySchema = z.object({
     mobileNumber: z
         .string()
         .trim()
-        .regex(/^[6-9]\d{9}$/, "Invalid Indian mobile number"),
+        .regex(/^(\+91)?[6-9]\d{9}$/, "Invalid Indian mobile number"),
 
     organisation: z
         .string()
