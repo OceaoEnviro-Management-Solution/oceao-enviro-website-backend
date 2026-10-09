@@ -8,19 +8,13 @@ const handleNewFeedbackController = asyncHandler(async (req, res) => {
 
     const feedbackData = req.body;
     const attachment = req.file;
-    console.log(feedbackData);
-    console.log("FILE BEFORE SERVICE:", attachment);
 
     try {
         await handleNewFeedbackService({ ...feedbackData, attachment });
     } catch (error) {
         throw error;
     } finally {
-        console.log("CLEANUP PATH:", attachment?.path);
-
         await deleteTempFile(attachment?.path);
-
-        console.log("CLEANUP FINISHED");
     }
 
     return res

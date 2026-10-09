@@ -1,11 +1,11 @@
 {
   "name": "oe-backend",
   "version": "1.0.0",
-  "main": "index.js",
+  "main": "src/index.js",
   "type": "module",
   "scripts": {
-    "start": "node index.js",
-    "dev": "nodemon -r dotenv/config --experimental-json-modules src/index.js"
+    "start": "node src/index.js",
+    "dev": "nodemon src/index.js"
   },
   "author": "Mohit Ranjan",
   "license": "ISC",
@@ -18,7 +18,8 @@
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
-    "mogoose": "^0.0.1-security",
+    "express-rate-limit": "^8.7.1",
+    "helmet": "^8.3.0",
     "mongoose": "^9.9.4",
     "multer": "^2.3.0",
     "nodemailer": "^10.0.0",

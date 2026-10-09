@@ -1,4 +1,6 @@
 import { ApiError } from "../utils/ApiError.js";
+import { config } from "../config/env.js";
+import { logger } from "../utils/logger.js";
 import { feedbackCompanyNotificationTemplate } from "./email/templates/feedback/companyNotification.feedback.template.js";
 import { feedbackClientConfirmationTemplate } from "./email/templates/feedback/clientConfirmation.feedback.template.js";
 import { sendMailService } from "./email/email.services.js";
@@ -24,8 +26,8 @@ const handleNewFeedbackService = async ({
 
     try {
         await sendMailService({
-            to: process.env.COMPANY_MAIL,
-            from: process.env.MAIL_FROM,
+            to: config.COMPANY_MAIL,
+            from: config.MAIL_FROM,
             replyTo: email,
             subject: companyResponse.subject,
             text: companyResponse.text,
@@ -38,9 +40,10 @@ const handleNewFeedbackService = async ({
             ] : []
         });
     } catch (error) {
-        console.error("Company feedback notification failed:", error);
+        logger.error("Company feedback notification failed", error);
         throw new ApiError(
             500,
+            "INTERNAL_ERROR",
             "Unable to process your feedback at the moment. Please try again later."
         );
     }
@@ -54,13 +57,13 @@ const handleNewFeedbackService = async ({
     try {
         await sendMailService({
             to: email,
-            from: process.env.MAIL_FROM,
+            from: config.MAIL_FROM,
             subject: clientResponse.subject,
             text: clientResponse.text,
             html: clientResponse.html
         });
     } catch (error) {
-        console.error("Customer confirmation email failed:", error);
+        logger.error("Customer confirmation email failed", error);
     }
 }
 

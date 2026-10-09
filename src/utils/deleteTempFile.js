@@ -1,4 +1,5 @@
 import fs from "fs/promises";
+import { logger } from "./logger.js";
 
 const deleteTempFile = async (filePath) => {
     if (!filePath) return;
@@ -6,7 +7,7 @@ const deleteTempFile = async (filePath) => {
         await fs.unlink(filePath);
         return;
     } catch (error) {
-        console.error("Error deleting temporary file:", error);
+        logger.error("Error deleting temporary file", error);
         return;
     }
 }

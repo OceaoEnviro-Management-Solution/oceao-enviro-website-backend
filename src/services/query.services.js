@@ -1,4 +1,6 @@
 import { ApiError } from "../utils/ApiError.js";
+import { config } from "../config/env.js";
+import { logger } from "../utils/logger.js";
 import { sendMailService } from "./email/email.services.js";
 
 import { queryClientConfirmationTemplate }
@@ -35,8 +37,8 @@ const handleNewQueryService = async ({
     try {
 
         await sendMailService({
-            to: process.env.COMPANY_MAIL,
-            from: process.env.MAIL_FROM,
+            to: config.COMPANY_MAIL,
+            from: config.MAIL_FROM,
             replyTo: email,
             subject: companyResponse.subject,
             text: companyResponse.text,
@@ -45,10 +47,11 @@ const handleNewQueryService = async ({
 
     } catch (error) {
 
-        console.error("Company query notification failed:", error);
+        logger.error("Company query notification failed", error);
 
         throw new ApiError(
             500,
+            "INTERNAL_ERROR",
             "Unable to process your query at the moment. Please try again later."
         );
     }
@@ -65,7 +68,7 @@ const handleNewQueryService = async ({
 
         await sendMailService({
             to: email,
-            from: process.env.MAIL_FROM,
+            from: config.MAIL_FROM,
             subject: clientResponse.subject,
             text: clientResponse.text,
             html: clientResponse.html
@@ -73,7 +76,7 @@ const handleNewQueryService = async ({
 
     } catch (error) {
 
-        console.error("Customer confirmation email failed:", error);
+        logger.error("Customer confirmation email failed", error);
 
         // Intentionally ignored.
     }
