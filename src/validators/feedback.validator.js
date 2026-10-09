@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { indianMobile } from "./common.js";
 
 const feedbackSchema = z.object({
     type: z
@@ -18,12 +19,11 @@ const feedbackSchema = z.object({
         .email("Invalid email address")
         .toLowerCase(),
 
-    mobileNumber: z
-        .string()
-        .trim()
-        .regex(/^(\+91)?[6-9]\d{9}$/, "Invalid Indian mobile number")
-        .optional()
-        .or(z.literal("")),
+    // Optional: a blank value is treated as not provided
+    mobileNumber: z.preprocess(
+        (value) => (typeof value === "string" && value.trim() === "" ? undefined : value),
+        indianMobile.optional()
+    ),
 
     subject: z
         .string()

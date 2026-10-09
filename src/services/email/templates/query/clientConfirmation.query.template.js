@@ -1,10 +1,15 @@
-const queryClientConfirmationTemplate = ({ name, industry }) => {
+import { escapeHtml } from "../../../../utils/escapeHTML.js";
+
+const queryClientConfirmationTemplate = ({ name, subject }) => {
+    const safeName = escapeHtml(name);
+    const safeSubject = escapeHtml(subject);
+
     const text = `
     Hello ${name},
 
     Thank you for contacting OCEAO ENVIRO.
 
-    We have successfully received your query regarding: ${industry}
+    We have successfully received your query regarding: ${subject}
     
     Our team will review your request and get back to you
     within the expected response timeframe.
@@ -23,9 +28,9 @@ const queryClientConfirmationTemplate = ({ name, industry }) => {
         <title>New Query Received</title>
     </head>
     <body>
-        <p>Hello ${name},</p>
+        <p>Hello ${safeName},</p>
         <p>Thank you for contacting OCEAO ENVIRO.</p>
-        <p>We have successfully received your query regarding: ${industry}</p>
+        <p>We have successfully received your query regarding: ${safeSubject}</p>
         <p>Our team will review your request and get back to you within the expected response timeframe.</p>
         <p>We appreciate your interest in OCEAO ENVIRO.</p>
         <p>Regards,</p>

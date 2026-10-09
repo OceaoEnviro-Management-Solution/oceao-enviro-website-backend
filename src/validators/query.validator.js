@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { indianMobile } from "./common.js";
 
 const querySchema = z.object({
     name: z
@@ -13,10 +14,7 @@ const querySchema = z.object({
         .email("Invalid email address")
         .toLowerCase(),
 
-    mobileNumber: z
-        .string()
-        .trim()
-        .regex(/^(\+91)?[6-9]\d{9}$/, "Invalid Indian mobile number"),
+    mobileNumber: indianMobile,
 
     organisation: z
         .string()

@@ -1,4 +1,5 @@
 import { escapeHtml } from "../../../../utils/escapeHTML.js";
+import { singleLine, truncate } from "../../../../utils/emailText.js";
 
 const feedbackCompanyNotificationTemplate = ({
     type,
@@ -10,7 +11,10 @@ const feedbackCompanyNotificationTemplate = ({
     attachment
 }) => {
 
-    const attachmentName = attachment?.originalname || "No attachment";
+    // The original file name is shown in the body only; the actual attachment is renamed by the service.
+    const attachmentName = attachment
+        ? truncate(singleLine(attachment.originalname), 100)
+        : "No attachment";
 
     const safeName = escapeHtml(name);
     const safeType = escapeHtml(type);
@@ -21,7 +25,7 @@ const feedbackCompanyNotificationTemplate = ({
     const safeAttachmentName = escapeHtml(attachmentName);
 
     return {
-        subject: `New Feedback Received - ${safeSubject}`,
+        subject: `New Feedback Received - ${singleLine(subject)}`,
 
         text: `
 New feedback has been received through the Oceao Enviro website.

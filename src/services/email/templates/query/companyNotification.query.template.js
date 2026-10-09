@@ -1,4 +1,16 @@
+import { escapeHtml } from "../../../../utils/escapeHTML.js";
+import { singleLine } from "../../../../utils/emailText.js";
+
 const queryCompanyNotificationTemplate = ({ name, email, mobileNumber, industry, source, organisation, subject, query }) => {
+    const safeName = escapeHtml(name);
+    const safeEmail = escapeHtml(email);
+    const safeMobileNumber = escapeHtml(mobileNumber);
+    const safeOrganisation = escapeHtml(organisation || "-");
+    const safeIndustry = escapeHtml(industry || "-");
+    const safeSource = escapeHtml(source || "-");
+    const safeSubject = escapeHtml(subject);
+    const safeQuery = escapeHtml(query);
+
     const text = `
         NEW QUERY RECEIVED
 
@@ -38,27 +50,27 @@ const queryCompanyNotificationTemplate = ({ name, email, mobileNumber, industry,
     <table>
         <tr>
             <td style="margin-right: 2px;">Name:</td>
-            <td><strong>${name}</strong></td>
+            <td><strong>${safeName}</strong></td>
         </tr>
         <tr>
             <td style="margin-right: 2px;">Mobile Number:</td>
-            <td><strong>${mobileNumber}</strong></td>
+            <td><strong>${safeMobileNumber}</strong></td>
         </tr>
         <tr>
             <td style="margin-right: 2px;">Organisation:</td>
-            <td><strong>${organisation || "-"}</strong></td>
+            <td><strong>${safeOrganisation}</strong></td>
         </tr>
         <tr>
             <td style="margin-right: 2px;">Industry:</td>
-            <td><strong>${industry || "-"}</strong></td>
+            <td><strong>${safeIndustry}</strong></td>
         </tr>
         <tr>
             <td style="margin-right: 2px;">Source:</td>
-            <td><strong>${source || "-"}</strong></td>
+            <td><strong>${safeSource}</strong></td>
         </tr>
         <tr>
             <td style="margin-right: 2px;">Reply to:</td>
-            <td><a href="mailto:${email}"><strong>${email}</strong></a></td>
+            <td><a href="mailto:${safeEmail}"><strong>${safeEmail}</strong></a></td>
         </tr>
     </table>
     <hr>
@@ -66,11 +78,11 @@ const queryCompanyNotificationTemplate = ({ name, email, mobileNumber, industry,
     <h3 style="margin-top: 15px; margin-bottom: 5px;"><b><i>QUERY</i></b></h3>
 
     <p style="margin-top: 5px; margin-bottom: 5px;">
-        <strong>Subject:${subject}</strong>
+        <strong>Subject:${safeSubject}</strong>
     </p>
 
     <p style="white-space: pre-line; margin-top: 5px; margin-bottom: 5px;">
-        ${query}
+        ${safeQuery}
     </p>
 
     <hr>
@@ -93,7 +105,7 @@ const queryCompanyNotificationTemplate = ({ name, email, mobileNumber, industry,
     return {
         text,
         html,
-        subject: `QUERY: ${subject}`
+        subject: `QUERY: ${singleLine(subject)}`
     }
 };
 

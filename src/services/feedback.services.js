@@ -32,10 +32,11 @@ const handleNewFeedbackService = async ({
             subject: companyResponse.subject,
             text: companyResponse.text,
             html: companyResponse.html,
-            attachments: attachment && attachment.path ? [
+            // Never use the user-supplied file name for the attachment
+            attachments: attachment ? [
                 {
-                    filename: attachment.originalname,
-                    path: attachment.path
+                    filename: `feedback-attachment.${attachment.detectedExt}`,
+                    content: attachment.buffer
                 }
             ] : []
         });
