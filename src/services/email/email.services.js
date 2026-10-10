@@ -15,6 +15,10 @@ const sendMailService = async ({ from, to, subject, text, html, replyTo, attachm
     }
 
     if (config.EMAIL_MODE === "test") {
+        const target = to === config.COMPANY_MAIL ? "company" : "customer";
+        if (outbox.takeFailure(target)) {
+            throw new Error(`Simulated ${target} email failure`);
+        }
         outbox.push(mailOptions);
         return { accepted: [].concat(to), messageId: `test-${outbox.length}` };
     }

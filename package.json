@@ -5,13 +5,17 @@
   "type": "module",
   "scripts": {
     "start": "node src/index.js",
-    "dev": "nodemon -r dotenv/config --experimental-json-modules src/index.js"
+    "dev": "nodemon src/index.js",
+    "test": "cross-env NODE_ENV=test EMAIL_MODE=test node --test --test-concurrency=1"
   },
   "author": "Mohit Ranjan",
   "license": "ISC",
   "description": "",
   "devDependencies": {
-    "nodemon": "^3.1.14"
+    "cross-env": "^10.1.0",
+    "mongodb-memory-server": "^11.3.0",
+    "nodemon": "^3.1.14",
+    "supertest": "^7.3.1"
   },
   "dependencies": {
     "cookie-parser": "^1.4.7",

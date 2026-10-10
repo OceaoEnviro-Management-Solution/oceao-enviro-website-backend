@@ -3,7 +3,8 @@ const singleLine = (value = "") => String(value).replace(/[\r\n]+/g, " ").trim()
 
 const truncate = (value = "", max = 100) => {
     const text = String(value);
-    return text.length > max ? `${text.slice(0, max)}...` : text;
+    // Result is never longer than `max`, including the ellipsis.
+    return text.length > max ? `${text.slice(0, max - 3)}...` : text;
 };
 
 export { singleLine, truncate };
