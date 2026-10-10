@@ -26,8 +26,15 @@ const sendMailService = async ({ from, to, subject, text, html, replyTo, attachm
     const result = await transporter.sendMail(mailOptions);
 
     if (config.EMAIL_MODE === "log") {
-        // Only recipient and subject are logged, never the body.
+        // Recipient and subject only, never the body...
         logger.info("Email (log mode)", { to, subject });
+
+        // ...except when developing locally: the plain-text body is printed too, so an OTP
+        // can be read from the console. Never happens in test, production or any other mode.
+        if (config.NODE_ENV === "development") {
+            logger.info(`Email body (development only):
+${text}`);
+        }
     }
 
     return result;

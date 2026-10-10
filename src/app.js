@@ -7,6 +7,7 @@ import { errorHandler, notFoundHandler } from './middlewares/error.middleware.js
 import { globalLimiter } from './middlewares/rateLimit.js'
 import { queryRouter } from "./routes/query.route.js"
 import { feedbackRouter } from "./routes/feedback.route.js"
+import { vmRouter } from "./routes/vm.route.js"
 
 const app = express();
 
@@ -36,6 +37,7 @@ app.use("/health", (req, res) => {
 
 app.use("/api/v1/query", queryRouter)
 app.use("/api/v1/feedback", feedbackRouter)
+app.use("/api/v1/vm", vmRouter)
 
 app.use(notFoundHandler);
 app.use(errorHandler);

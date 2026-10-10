@@ -8,6 +8,7 @@ const text = () => z.preprocess(blankToUndefined, z.string().trim());
 const required = () => text().pipe(z.string().min(1));
 const optional = () => z.preprocess(blankToUndefined, z.string().trim().optional());
 const secret = () => z.preprocess(blankToUndefined, z.string().min(32, "must be at least 32 characters").optional());
+const requiredSecret = () => z.preprocess(blankToUndefined, z.string().min(32, "must be at least 32 characters"));
 
 const envSchema = z
     .object({
@@ -36,9 +37,11 @@ const envSchema = z
         SMTP_USER: optional(),
         SMTP_PASSWORD: optional(),
 
+        // Virtual meeting OTP and booking token signing (each at least 32 characters)
+        OTP_SECRET: requiredSecret(),
+        BOOKING_TOKEN_SECRET: requiredSecret(),
+
         // Optional until the stage that uses them
-        OTP_SECRET: secret(),
-        BOOKING_TOKEN_SECRET: secret(),
         GOOGLE_CLIENT_ID: optional(),
         GOOGLE_CLIENT_SECRET: optional(),
         GOOGLE_REFRESH_TOKEN: optional(),

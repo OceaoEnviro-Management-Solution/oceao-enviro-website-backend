@@ -4,12 +4,16 @@ import { MongoMemoryServer } from "mongodb-memory-server";
 // Test environment. Set before the app is imported so src/config/env.js validates these
 // and nothing is ever read from a developer's .env (dotenv is not loaded here).
 export const TEST_COMPANY_MAIL = "company@oceao.test";
+export const TEST_OTP_SECRET = "test-otp-secret-0123456789-abcdefghijklmnop";
+export const TEST_BOOKING_TOKEN_SECRET = "test-booking-token-secret-0123456789-abcdefgh";
 const TEST_ENV = {
     NODE_ENV: "test",
     EMAIL_MODE: "test",
     CORS_ORIGINS: "http://localhost:5173",
     MAIL_FROM: "Oceao Enviro <no-reply@oceao.test>",
     COMPANY_MAIL: TEST_COMPANY_MAIL,
+    OTP_SECRET: TEST_OTP_SECRET,
+    BOOKING_TOKEN_SECRET: TEST_BOOKING_TOKEN_SECRET,
     TRUST_PROXY: "0",
 };
 

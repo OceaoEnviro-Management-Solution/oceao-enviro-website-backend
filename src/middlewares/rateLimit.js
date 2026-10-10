@@ -41,4 +41,8 @@ const publicFormLimiter = createLimiter(5);
 // Everything under /api: 300 requests / 15 min / IP
 const globalLimiter = createLimiter(300);
 
-export { publicFormLimiter, globalLimiter, rateLimitControl };
+// Virtual meeting OTP: 10 sends and 10 verifications / 15 min / IP (separate counters)
+const otpSendLimiter = createLimiter(10);
+const otpVerifyLimiter = createLimiter(10);
+
+export { publicFormLimiter, globalLimiter, otpSendLimiter, otpVerifyLimiter, rateLimitControl };
