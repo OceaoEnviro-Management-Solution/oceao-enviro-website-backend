@@ -34,14 +34,20 @@ const isClosedByRule = (dateKey) =>
     isValidDateKey(dateKey) && !isVmWorkingDay(dateKey) && !isCallbackWorkingDay(dateKey);
 
 // Order matters: a date is reported with the first reason that applies.
-const evaluateDay = async (dateKey, now, { horizonDays, isWorkingDay }) => {
+// `isHoliday` may be sync or async; the default looks the date up in the database.
+const evaluateDay = async (
+    dateKey,
+    now,
+    { horizonDays, isWorkingDay },
+    isHoliday = (key) => Holiday.exists({ date: key })
+) => {
     if (!isValidDateKey(dateKey)) return closed("invalid_date");
 
     const today = nowIST(now).dateKey;
     if (dateKey < today) return closed("past");
     if (dateKey > addDays(today, horizonDays)) return closed("beyond_horizon");
     if (!isWorkingDay(dateKey)) return closed("non_working_day");
-    if (await Holiday.exists({ date: dateKey })) return closed("holiday");
+    if (await isHoliday(dateKey)) return closed("holiday");
 
     return open();
 };
@@ -52,6 +58,29 @@ const evaluateDay = async (dateKey, now, { horizonDays, isWorkingDay }) => {
  */
 const getVmDayStatus = (dateKey, now = new Date()) =>
     evaluateDay(dateKey, now, { horizonDays: BOOKING.vm.horizonDays, isWorkingDay: isVmWorkingDay });
+
+/**
+ * getVmDayStatus for many dates with a single holidays query.
+ * @param {string[]} dateKeys
+ * @returns {Promise<Array<{ bookable: boolean, reason: string | null }>>} same order as dateKeys
+ */
+const getVmDayStatuses = async (dateKeys, now = new Date()) => {
+    const candidates = dateKeys.filter(isValidDateKey);
+    const holidays = candidates.length > 0
+        ? new Set((await Holiday.find({ date: { $in: candidates } }).select({ date: 1, _id: 0 }).lean()).map((h) => h.date))
+        : new Set();
+
+    return Promise.all(
+        dateKeys.map((dateKey) =>
+            evaluateDay(
+                dateKey,
+                now,
+                { horizonDays: BOOKING.vm.horizonDays, isWorkingDay: isVmWorkingDay },
+                (key) => holidays.has(key)
+            )
+        )
+    );
+};
 
 /**
  * Is this slot time bookable right now? False for a time that is not a configured
@@ -92,6 +121,7 @@ const isCallbackPeriodOpen = (dateKey, periodKey, now = new Date()) => {
 
 export {
     getVmDayStatus,
+    getVmDayStatuses,
     isVmSlotTimeOpen,
     getCallbackDayStatus,
     isCallbackPeriodOpen,
