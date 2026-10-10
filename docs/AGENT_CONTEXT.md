@@ -57,6 +57,7 @@ export const BOOKING = Object.freeze({
   },
   callback: {
     workingDays: [1, 2, 3, 4, 5, 6],       // Mon-Sat
+    closedSaturdaysOfMonth: [2],           // 2nd Saturday of every month closed
     periods: {
       morning:   { label: "Morning",   start: "09:00", end: "12:00", timeRange: "9 AM – 12 PM", defaultCapacity: 5 },
       afternoon: { label: "Afternoon", start: "12:00", end: "15:00", timeRange: "12 PM – 3 PM", defaultCapacity: 5 },
@@ -79,7 +80,7 @@ export const BOOKING = Object.freeze({
 });
 ```
 
-Holidays (from the `holidays` collection) close a date for both VM and callbacks. Past dates and dates beyond the horizon are never bookable.
+Sundays (both) and the second Saturday of each month (callbacks; VM never runs on Saturdays) are closed by rule and are never stored as holidays. Festival holidays live in the `holidays` collection, are managed by staff from the admin Settings page (year calendar, bulk add at the start of the year, edit any time), and close a date for both VM and callbacks. Past dates and dates beyond the horizon are never bookable.
 
 ## 5. Time handling
 

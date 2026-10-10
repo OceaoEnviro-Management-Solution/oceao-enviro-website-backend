@@ -6,7 +6,8 @@
   "scripts": {
     "start": "node src/index.js",
     "dev": "nodemon src/index.js",
-    "test": "cross-env NODE_ENV=test EMAIL_MODE=test node --test --test-concurrency=1"
+    "test": "cross-env NODE_ENV=test EMAIL_MODE=test node --test --test-concurrency=1",
+    "seed:holidays": "node scripts/seed-holidays.js"
   },
   "author": "Mohit Ranjan",
   "license": "ISC",

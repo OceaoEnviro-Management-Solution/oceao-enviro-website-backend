@@ -45,6 +45,7 @@ Base URL: `{API}/api/v1` (local `http://localhost:8000/api/v1`). All bodies JSON
 | OTP_EXPIRED | 410 | code expired |
 | FILE_TOO_LARGE | 413 | > 5 MB |
 | PAYLOAD_TOO_LARGE | 413 | body > 20 kb |
+| ALREADY_CLOSED | 422 | holiday on a date already closed by rule |
 | DATE_NOT_BOOKABLE | 422 | `errors.reason` = past, beyond_horizon, non_working_day, holiday, invalid_date, closed |
 | RATE_LIMITED | 429 | IP limiter; `Retry-After` header |
 | OTP_COOLDOWN | 429 | `errors.retryAfterSec` |
@@ -223,7 +224,11 @@ Errors: DATE_NOT_BOOKABLE (past/non-working for blocks), NOT_FOUND, NOT_CANCELLA
 | PATCH | /admin/callback/requests/:requestId | `{ status: "pending"|"completed"|"no_answer", performedBy }` | `{ requestId, status }` |
 | PUT | /admin/settings/callback-capacity | `{ morning, afternoon, evening (0–50), performedBy, reason }` | `{ callbackCapacity }` |
 | POST | /admin/holidays | `{ date, name (2–100), performedBy, reason }` | `{ holiday, affected: { vmBookings, callbackRequests } }` |
+| POST | /admin/holidays/bulk | `{ holidays: [ { date, name } ] (1–60), performedBy, reason }` | `{ added: [dates], skipped: [ { date, reason: "exists"|"closed_by_rule" } ], affected: { vmBookings, callbackRequests } }` |
+| PATCH | /admin/holidays/:date | `{ name, performedBy, reason }` | `{ holiday }` |
 | DELETE | /admin/holidays/:date | `{ performedBy, reason }` | `{ date }` |
+
+Adding a Sunday or second Saturday to `POST /admin/holidays` returns 422 `ALREADY_CLOSED` (bulk skips it with `closed_by_rule`).
 
 Blocking a callback period never cancels existing requests. Lowering capacity never cancels anyone.
 
