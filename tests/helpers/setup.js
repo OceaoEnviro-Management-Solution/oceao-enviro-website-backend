@@ -31,6 +31,10 @@ export const startTestEnv = async () => {
     ({ outbox } = await import("../../src/services/email/email.transporter.js"));
     ({ rateLimitControl } = await import("../../src/middlewares/rateLimit.js"));
 
+    // Unique and TTL indexes must exist before any test relies on them.
+    const { initModels } = await import("../../src/models/index.js");
+    await initModels();
+
     return { app };
 };
 
