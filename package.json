@@ -7,7 +7,8 @@
     "start": "node src/index.js",
     "dev": "nodemon src/index.js",
     "test": "cross-env NODE_ENV=test EMAIL_MODE=test node --test --test-concurrency=1",
-    "seed:holidays": "node scripts/seed-holidays.js"
+    "seed:holidays": "node scripts/seed-holidays.js",
+    "google:auth": "node scripts/google-auth.js"
   },
   "author": "Mohit Ranjan",
   "license": "ISC",
@@ -25,6 +26,7 @@
     "express": "^5.2.1",
     "express-rate-limit": "^8.7.1",
     "file-type": "^21.3.4",
+    "googleapis": "^185.0.0",
     "helmet": "^8.3.0",
     "jsonwebtoken": "^9.0.3",
     "mongoose": "^9.9.4",

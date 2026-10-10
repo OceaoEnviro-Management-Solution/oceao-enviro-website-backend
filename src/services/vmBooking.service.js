@@ -18,9 +18,10 @@ import { VmSlot } from "../models/vmSlot.model.js";
 import { ApiError } from "../utils/ApiError.js";
 import { generateBookingId } from "../utils/ids.js";
 import { logger } from "../utils/logger.js";
-import { expireAtFor, nowIST } from "../utils/time.js";
+import { expireAtFor, istToDate, nowIST } from "../utils/time.js";
 import { getVmDayStatus, isVmSlotTimeOpen } from "./calendar.service.js";
-import { notifyVmBooked } from "./notify.service.js";
+import { createMeetEvent, MeetNotConfiguredError } from "./googleCalendar.service.js";
+import { notifyVmBooked, notifyVmMeetLink } from "./notify.service.js";
 
 const DUPLICATE_KEY = 11000;
 const MAX_ID_ATTEMPTS = 3;
@@ -41,14 +42,22 @@ const isDuplicateKey = (error) => error?.code === DUPLICATE_KEY;
 const isDuplicateBookingId = (error) =>
     isDuplicateKey(error) && Object.hasOwn(error.keyPattern ?? {}, "bookingId");
 
-// Step 6 hook.
-// STAGE 2.4 (Google Meet) REPLACES THIS FUNCTION. It will create the Calendar event with
-// conferenceData and return { meetStatus: "created", meetLink, googleEventId }. It must
-// never throw: any Google failure returns { meetStatus: "failed", meetLink: null }, and
-// the booking stays confirmed (an admin can retry later).
-// Until then no link is created, so every booking is "failed" (the customer email says
-// the link will follow).
-const createMeetLink = async () => ({ meetStatus: "failed", meetLink: null, googleEventId: null });
+// Step 6: Google Meet. Best effort and never throws: any problem (not configured, Google
+// error, 8 second timeout, no link returned) yields "failed", the booking stays confirmed
+// and an admin can retry later with retryMeetForBooking.
+const createMeetLink = async (booking) => {
+    try {
+        const { eventId, meetLink } = await createMeetEvent(booking);
+        return { meetStatus: "created", meetLink, googleEventId: eventId };
+    } catch (error) {
+        const log = error instanceof MeetNotConfiguredError ? logger.warn : logger.error;
+        log("Meet link not created", {
+            bookingId: booking.bookingId,
+            reason: error?.code ?? error?.name ?? "unknown",
+        });
+        return { meetStatus: "failed", meetLink: null, googleEventId: null };
+    }
+};
 
 /**
  * Books a virtual meeting slot. Resolves with the data for the 201 response.
@@ -139,4 +148,67 @@ const createVmBooking = async (input, { now = new Date() } = {}) => {
     };
 };
 
-export { createVmBooking };
+/**
+ * Creates the Meet event for a booking whose link is missing, saves it and emails the
+ * customer the link. Used by the admin "retry" action.
+ *
+ * Errors: NOT_FOUND (404), MEET_ALREADY_CREATED (409), NOT_CANCELLABLE (409: the booking
+ * is cancelled or has already started), CONFLICT (409: a retry is already running),
+ * MEET_CREATE_FAILED (502: Google failed; the booking stays "failed").
+ *
+ * @returns {Promise<{ bookingId: string, meetLink: string, meetStatus: "created" }>}
+ */
+const retryMeetForBooking = async (bookingId, { now = new Date() } = {}) => {
+    // Claim the retry atomically so two admins clicking at once create one event.
+    const claimed = await VmBooking.findOneAndUpdate(
+        { bookingId, status: "confirmed", meetStatus: "failed" },
+        { $set: { meetStatus: "pending" } },
+        { returnDocument: "after" }
+    );
+
+    if (!claimed) {
+        const existing = await VmBooking.findOne({ bookingId }).lean();
+        if (!existing) throw new ApiError(404, "NOT_FOUND", "Booking not found.");
+        if (existing.meetStatus === "created" || existing.meetLink) {
+            throw new ApiError(409, "MEET_ALREADY_CREATED", "This booking already has a Meet link.");
+        }
+        if (existing.status !== "confirmed") {
+            throw new ApiError(409, "NOT_CANCELLABLE", "This booking is cancelled, so no Meet link can be created.");
+        }
+        throw new ApiError(409, "CONFLICT", "A Meet link is already being created for this booking.");
+    }
+
+    if (istToDate(claimed.date, claimed.time).getTime() <= now.getTime()) {
+        await VmBooking.updateOne({ _id: claimed._id }, { $set: { meetStatus: "failed" } });
+        throw new ApiError(409, "NOT_CANCELLABLE", "This meeting has already started, so no Meet link can be created.");
+    }
+
+    try {
+        const { eventId, meetLink } = await createMeetEvent(claimed);
+        await VmBooking.updateOne(
+            { _id: claimed._id },
+            { $set: { meetStatus: "created", meetLink, googleEventId: eventId } }
+        );
+
+        claimed.meetStatus = "created";
+        claimed.meetLink = meetLink;
+        claimed.googleEventId = eventId;
+        void notifyVmMeetLink(claimed);   // fire and forget; never rejects
+
+        return { bookingId, meetLink, meetStatus: "created" };
+    } catch (error) {
+        // Put the booking back to "failed" so it can be retried again.
+        await VmBooking.updateOne({ _id: claimed._id }, { $set: { meetStatus: "failed" } });
+        logger.error("Meet retry failed", {
+            bookingId,
+            reason: error?.code ?? error?.name ?? "unknown",
+        });
+        throw new ApiError(
+            502,
+            "MEET_CREATE_FAILED",
+            "Could not create the Google Meet link. Please try again in a moment."
+        );
+    }
+};
+
+export { createVmBooking, retryMeetForBooking };

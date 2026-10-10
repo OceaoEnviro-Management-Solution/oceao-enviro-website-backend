@@ -4,6 +4,7 @@ import { config } from "./config/env.js"
 import connectDB, { disconnectDB } from "./db/index.js"
 import { app } from "./app.js"
 import { emailConnectionVerify } from "./services/email/email.connections.js"
+import { meetBootWarning } from "./services/googleCalendar.service.js"
 import { logger } from "./utils/logger.js"
 
 const SHUTDOWN_TIMEOUT_MS = 10000;
@@ -14,6 +15,11 @@ const start = async () => {
     } catch (error) {
         logger.error("MongoDB connection failed", error);
         process.exit(1);
+    }
+
+    const meetWarning = meetBootWarning();
+    if (meetWarning) {
+        logger.warn(meetWarning);
     }
 
     const server = app.listen(config.PORT, (error) => {
