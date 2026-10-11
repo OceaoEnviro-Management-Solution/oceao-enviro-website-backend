@@ -16,6 +16,7 @@ import {
     TEST_OTP_SECRET,
     TEST_BOOKING_TOKEN_SECRET,
     TEST_COMPANY_MAIL,
+    TEST_ADMIN_ENV,
 } from "./helpers/setup.js";
 
 const SEND = "/api/v1/vm/otp/send";
@@ -549,6 +550,7 @@ describe("virtual meeting OTP", () => {
                     OTP_SECRET: TEST_OTP_SECRET,
                     BOOKING_TOKEN_SECRET: TEST_BOOKING_TOKEN_SECRET,
                     TURNSTILE_SECRET_KEY: "1x0000000000000000000000000000000AA",
+                    ...TEST_ADMIN_ENV,
                 },
             });
             assert.equal(result.status, 0, result.stderr);

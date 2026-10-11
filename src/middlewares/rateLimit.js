@@ -45,4 +45,7 @@ const globalLimiter = createLimiter(300);
 const otpSendLimiter = createLimiter(10);
 const otpVerifyLimiter = createLimiter(10);
 
-export { publicFormLimiter, globalLimiter, otpSendLimiter, otpVerifyLimiter, rateLimitControl };
+// Admin login: 5 attempts / 15 min / IP
+const adminLoginLimiter = createLimiter(5);
+
+export { publicFormLimiter, globalLimiter, otpSendLimiter, otpVerifyLimiter, adminLoginLimiter, rateLimitControl };

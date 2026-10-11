@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+import bcrypt from "bcryptjs";
 import { MongoMemoryServer } from "mongodb-memory-server";
 
 // Test environment. Set before the app is imported so src/config/env.js validates these
@@ -8,15 +9,28 @@ export const TEST_COMPANY_MAIL = "company@oceao.test";
 export const TEST_CAPTCHA_TOKEN = "test-turnstile-token";
 export const TEST_OTP_SECRET = "test-otp-secret-0123456789-abcdefghijklmnop";
 export const TEST_BOOKING_TOKEN_SECRET = "test-booking-token-secret-0123456789-abcdefgh";
+// Admin login. The hash uses bcrypt cost 4 so tests stay fast (production uses 12).
+export const TEST_ADMIN_EMAIL = "admin@oceao.test";
+export const TEST_ADMIN_PASSWORD = "correct horse battery staple";
+export const TEST_ADMIN_PASSWORD_HASH = bcrypt.hashSync(TEST_ADMIN_PASSWORD, 4);
+export const TEST_ADMIN_JWT_SECRET = "test-admin-jwt-secret-0123456789-abcdefghijk";
+export const TEST_ORIGIN = "http://localhost:5173";
+// For tests that spawn a child process with a hand-built environment.
+export const TEST_ADMIN_ENV = {
+    ADMIN_EMAIL: TEST_ADMIN_EMAIL,
+    ADMIN_PASSWORD_HASH: TEST_ADMIN_PASSWORD_HASH,
+    ADMIN_JWT_SECRET: TEST_ADMIN_JWT_SECRET,
+};
 const TEST_ENV = {
     NODE_ENV: "test",
     EMAIL_MODE: "test",
-    CORS_ORIGINS: "http://localhost:5173",
+    CORS_ORIGINS: TEST_ORIGIN,
     MAIL_FROM: "Oceao Enviro <no-reply@oceao.test>",
     COMPANY_MAIL: TEST_COMPANY_MAIL,
     TURNSTILE_SECRET_KEY: "1x0000000000000000000000000000000AA",
     OTP_SECRET: TEST_OTP_SECRET,
     BOOKING_TOKEN_SECRET: TEST_BOOKING_TOKEN_SECRET,
+    ...TEST_ADMIN_ENV,
     TRUST_PROXY: "0",
 };
 

@@ -14,7 +14,7 @@ for (const key of ["GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET", "GOOGLE_REFRESH_T
 
 const {
     startTestEnv, stopTestEnv, resetState, getApp, emailOutbox, TEST_BOOKING_TOKEN_SECRET,
-    TEST_COMPANY_MAIL, TEST_OTP_SECRET,
+    TEST_COMPANY_MAIL, TEST_OTP_SECRET, TEST_ADMIN_ENV,
 } = await import("./helpers/setup.js");
 const { expireAtFor } = await import("../src/utils/time.js");
 
@@ -507,6 +507,7 @@ describe("Google Meet", () => {
                         OTP_SECRET: TEST_OTP_SECRET,
                         BOOKING_TOKEN_SECRET: TEST_BOOKING_TOKEN_SECRET,
                         TURNSTILE_SECRET_KEY: "1x0000000000000000000000000000000AA",
+                        ...TEST_ADMIN_ENV,
                         GOOGLE_CLIENT_ID: "client-id-123.apps.googleusercontent.com",
                         GOOGLE_CLIENT_SECRET: "client-secret-456",
                     },

@@ -7,8 +7,10 @@ const blankToUndefined = (value) =>
 const text = () => z.preprocess(blankToUndefined, z.string().trim());
 const required = () => text().pipe(z.string().min(1));
 const optional = () => z.preprocess(blankToUndefined, z.string().trim().optional());
-const secret = () => z.preprocess(blankToUndefined, z.string().min(32, "must be at least 32 characters").optional());
 const requiredSecret = () => z.preprocess(blankToUndefined, z.string().min(32, "must be at least 32 characters"));
+
+// $2a$ / $2b$ / $2y$, two-digit cost, then 53 characters of salt and hash (bcrypt, 60 characters in all)
+const BCRYPT_HASH = /^\$2[aby]\$\d{2}\$[./A-Za-z0-9]{53}$/;
 
 const envSchema = z
     .object({
@@ -49,9 +51,14 @@ const envSchema = z
         GOOGLE_CLIENT_SECRET: optional(),
         GOOGLE_REFRESH_TOKEN: optional(),
         GOOGLE_CALENDAR_ID: z.preprocess(blankToUndefined, z.string().trim().default("primary")),
-        ADMIN_EMAIL: optional(),
-        ADMIN_PASSWORD_HASH: optional(),
-        ADMIN_JWT_SECRET: secret(),
+
+        // Admin login: one shared account (AGENT_CONTEXT.md section 9)
+        ADMIN_EMAIL: required().pipe(z.string().email("must be an email address")),
+        // Make the hash with `npm run admin:hash`; a value that is not a bcrypt hash could never log in
+        ADMIN_PASSWORD_HASH: required().pipe(
+            z.string().regex(BCRYPT_HASH, "must be a bcrypt hash (generate one with npm run admin:hash)")
+        ),
+        ADMIN_JWT_SECRET: requiredSecret(),
     })
     .superRefine((env, ctx) => {
         if (env.EMAIL_MODE !== "smtp") return;
