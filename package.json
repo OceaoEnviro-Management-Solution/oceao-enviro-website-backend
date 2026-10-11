@@ -9,7 +9,8 @@
     "test": "cross-env NODE_ENV=test EMAIL_MODE=test node --test --test-concurrency=1",
     "seed:holidays": "node scripts/seed-holidays.js",
     "google:auth": "node scripts/google-auth.js",
-    "admin:hash": "node scripts/hash-password.js"
+    "admin:hash": "node scripts/hash-password.js",
+    "seed:demo": "node scripts/seed-demo.js"
   },
   "author": "Mohit Ranjan",
   "license": "ISC",

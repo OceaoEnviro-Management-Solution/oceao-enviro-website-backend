@@ -132,4 +132,6 @@ export {
     getCallbackDayStatuses,
     isCallbackPeriodOpen,
     isClosedByRule,
+    isVmWorkingDay,
+    isCallbackWorkingDay,
 };
