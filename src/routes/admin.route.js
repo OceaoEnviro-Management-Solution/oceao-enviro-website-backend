@@ -16,6 +16,19 @@ import {
     handleVmCancel,
     handleVmRetryMeet,
 } from "../controllers/adminVm.controller.js";
+import {
+    handleCallbackBlock,
+    handleCallbackUnblock,
+    handleCallbackCancel,
+    handleCallbackStatus,
+} from "../controllers/adminCallback.controller.js";
+import {
+    handleCapacity,
+    handleHolidayAdd,
+    handleHolidayBulk,
+    handleHolidayRename,
+    handleHolidayDelete,
+} from "../controllers/adminSettings.controller.js";
 import { validateBody } from "../middlewares/validateBody.middleware.js";
 import { validateQuery } from "../middlewares/validateQuery.middleware.js";
 import { validateParams } from "../middlewares/validateParams.middleware.js";
@@ -37,6 +50,18 @@ import {
     retryMeetSchema,
     bookingIdParamsSchema,
 } from "../validators/adminVm.validator.js";
+import {
+    callbackBlockSchema,
+    cancelRequestsSchema,
+    requestStatusSchema,
+    requestIdParamsSchema,
+    capacitySchema,
+    holidayCreateSchema,
+    holidayBulkSchema,
+    holidayRenameSchema,
+    holidayDeleteSchema,
+    dateParamsSchema,
+} from "../validators/adminCallback.validator.js";
 
 const router = Router();
 
@@ -76,6 +101,22 @@ router.post(
     handleVmRetryMeet
 );
 
-// Phase 5 adds the callback and settings write routes below.
+// ── Callback actions (each change writes an audit entry) ──────────────────────
+router.post("/callback/blocks", validateBody(callbackBlockSchema), handleCallbackBlock);
+router.post("/callback/blocks/remove", validateBody(callbackBlockSchema), handleCallbackUnblock);
+router.post("/callback/requests/cancel", validateBody(cancelRequestsSchema), handleCallbackCancel);
+router.patch(
+    "/callback/requests/:requestId",
+    validateParams(requestIdParamsSchema),
+    validateBody(requestStatusSchema),
+    handleCallbackStatus
+);
+
+// ── Settings: callback capacity and holidays ──────────────────────────────────
+router.put("/settings/callback-capacity", validateBody(capacitySchema), handleCapacity);
+router.post("/holidays", validateBody(holidayCreateSchema), handleHolidayAdd);
+router.post("/holidays/bulk", validateBody(holidayBulkSchema), handleHolidayBulk);
+router.patch("/holidays/:date", validateParams(dateParamsSchema), validateBody(holidayRenameSchema), handleHolidayRename);
+router.delete("/holidays/:date", validateParams(dateParamsSchema), validateBody(holidayDeleteSchema), handleHolidayDelete);
 
 export { router as adminRouter };

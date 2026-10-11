@@ -58,4 +58,5 @@ const bookingIdParamsSchema = z.object({
         .regex(BOOKING_ID_PATTERN, "Must look like OE-VM-YYMMDD-XXXX"),
 });
 
-export { slotTargetSchema, cancelBookingSchema, retryMeetSchema, bookingIdParamsSchema };
+// dateKey, performedBy and reason are shared with the other admin write validators.
+export { dateKey, performedBy, reason, slotTargetSchema, cancelBookingSchema, retryMeetSchema, bookingIdParamsSchema };
