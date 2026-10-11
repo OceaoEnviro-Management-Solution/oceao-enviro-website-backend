@@ -35,6 +35,7 @@ import { validateParams } from "../middlewares/validateParams.middleware.js";
 import { adminLoginLimiter } from "../middlewares/rateLimit.js";
 import { requireAdmin } from "../middlewares/requireAdmin.js";
 import { adminCsrf } from "../middlewares/adminCsrf.js";
+import { noInputSchema } from "../validators/common.js";
 import { loginSchema } from "../validators/adminAuth.validator.js";
 import {
     dashboardQuerySchema,
@@ -72,8 +73,9 @@ router.post("/auth/login", adminLoginLimiter, validateBody(loginSchema), handleL
 // ── Everything below needs a session, and every write must pass the CSRF check ──
 router.use(requireAdmin, adminCsrf);
 
-router.post("/auth/logout", handleLogout);
-router.get("/auth/me", handleMe);
+// These take no input: any body or query key is a 400.
+router.post("/auth/logout", validateBody(noInputSchema), handleLogout);
+router.get("/auth/me", validateQuery(noInputSchema), handleMe);
 
 // ── Read endpoints ────────────────────────────────────────────────────────────
 router.get("/dashboard", validateQuery(dashboardQuerySchema), handleDashboard);
@@ -82,7 +84,7 @@ router.get("/vm/calendar", validateQuery(monthQuerySchema), handleVmCalendar);
 router.get("/vm/availability", validateQuery(dateQuerySchema), handleVmAvailability);
 router.get("/callback/availability", validateQuery(dateQuerySchema), handleCallbackAvailability);
 router.get("/callback/requests", validateQuery(callbackRequestsQuerySchema), handleCallbackRequests);
-router.get("/settings", handleSettings);
+router.get("/settings", validateQuery(noInputSchema), handleSettings);
 router.get("/holidays", validateQuery(holidaysQuerySchema), handleHolidays);
 
 // ── VM actions (each writes one audit entry) ──────────────────────────────────

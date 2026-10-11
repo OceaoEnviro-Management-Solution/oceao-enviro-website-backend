@@ -11,4 +11,7 @@ const indianMobile = z
             .transform((digits) => `+91${digits}`)
     );
 
-export { indianMobile };
+// For routes that take no input in that part of the request: any key at all is a 400.
+const noInputSchema = z.object({}).strict();
+
+export { indianMobile, noInputSchema };

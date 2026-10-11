@@ -10,7 +10,8 @@
     "seed:holidays": "node scripts/seed-holidays.js",
     "google:auth": "node scripts/google-auth.js",
     "admin:hash": "node scripts/hash-password.js",
-    "seed:demo": "node scripts/seed-demo.js"
+    "seed:demo": "node scripts/seed-demo.js",
+    "check:concurrency": "node scripts/concurrency-check.js"
   },
   "author": "Mohit Ranjan",
   "license": "ISC",

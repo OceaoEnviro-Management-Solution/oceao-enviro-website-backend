@@ -3,6 +3,7 @@ import { ZodError, z } from "zod";
 import { ApiError } from "../utils/ApiError.js";
 import { config } from "../config/env.js";
 import { logger } from "../utils/logger.js";
+import { runWithRequestId } from "../utils/requestContext.js";
 
 const GENERIC_MESSAGE = "Something went wrong. Please try again later.";
 
@@ -54,7 +55,11 @@ const errorHandler = (err, req, res, next) => {
     const { statusCode, code, message, errors } = toErrorResponse(err);
 
     if (statusCode >= 500) {
-        logger.error(`${req.method} ${req.originalUrl.split("?")[0]} failed with ${statusCode}`, err);
+        // Entered from req.id so the line carries the request ID whatever async context we are in.
+        // The path is logged without its query string.
+        runWithRequestId(req.id, () =>
+            logger.error(`${req.method} ${req.originalUrl.split("?")[0]} failed with ${statusCode}`, err)
+        );
     }
 
     const hideDetails = statusCode >= 500 && config.NODE_ENV === "production";

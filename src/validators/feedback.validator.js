@@ -35,6 +35,6 @@ const feedbackSchema = z.object({
         .trim()
         .min(10, "Message must contain at least 10 characters")
         .max(5000, "Message cannot exceed 5000 characters")
-});
+}).strict();
 
 export { feedbackSchema };

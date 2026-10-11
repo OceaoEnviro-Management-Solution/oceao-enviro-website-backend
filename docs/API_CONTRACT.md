@@ -18,7 +18,33 @@ Base URL: `{API}/api/v1` (local `http://localhost:8000/api/v1`). All bodies JSON
 { "success": false, "code": "SLOT_TAKEN", "message": "That slot was just booked. Please pick another.", "errors": {} }
 ```
 
-`errors` holds field errors for 400 `VALIDATION_FAILED` as `{ "fieldName": ["message", ...] }`, otherwise `{}` or a small object stated per endpoint (e.g. `{ "attemptsLeft": 3 }`). Production 5xx always returns code `INTERNAL_ERROR` with a generic message.
+`errors` holds field errors for 400 `VALIDATION_FAILED` as `{ "fieldName": ["message", ...] }`, otherwise `{}` or a small object stated per endpoint (e.g. `{ "attemptsLeft": 3 }`).
+
+With `NODE_ENV=production` every 5xx response, including the 502 codes below, is `{ "code": "INTERNAL_ERROR", "message": "Something went wrong. Please try again later.", "errors": {} }`. The detail stays in the server log under the request ID.
+
+### Request ID
+
+Every response, success or error, has an `X-Request-Id` header: a new UUID per request. It is also in every server log line for that request (`requestId=<id>`), so quote it when reporting a problem. A request ID sent by the client is ignored.
+
+### Strict input
+
+Body, query string and path parameters are validated against strict schemas. A field that is not listed for an endpoint is `400 VALIDATION_FAILED` with `errors: { "<field>": ["Unexpected field"] }`. The three admin endpoints that take no input (`POST /admin/auth/logout`, `GET /admin/auth/me`, `GET /admin/settings`) reject any key at all. A request part an endpoint does not use (such as a body on a GET) is never read. The one exception: an `email` in the `POST /vm/bookings` body is accepted and discarded. Values must have the documented type, so an object such as `{ "$gt": "" }` where a string is expected is a 400 too.
+
+### Rate limits
+
+Per IP, per 15 minutes, answered with 429 `RATE_LIMITED` and a `Retry-After` header:
+
+| Limiter | Limit | Applies to |
+| --- | --- | --- |
+| Public forms | 5 | `POST /query/new-query`, `POST /feedback/new-feedback`, `POST /callback/requests` (one shared counter) |
+| OTP send | 10 | `POST /vm/otp/send` |
+| OTP verify | 10 | `POST /vm/otp/verify` |
+| Admin login | 5 | `POST /admin/auth/login` |
+| All of `/api` | 300 | every route under `/api` |
+
+`GET /health` is not limited.
+
+### Error codes
 
 | Code | Status | Meaning |
 | --- | --- | --- |
@@ -41,7 +67,7 @@ Base URL: `{API}/api/v1` (local `http://localhost:8000/api/v1`). All bodies JSON
 | DUPLICATE_REQUEST | 409 | same email already pending on that date |
 | NOT_CANCELLABLE | 409 | booking already cancelled or started |
 | MEET_ALREADY_CREATED | 409 | retry on a booking that has a link |
-| CONFLICT | 409 | other duplicate key |
+| CONFLICT | 409 | duplicate holiday date; status change on a cancelled callback request; a slot or period being changed at the same moment (retry); a Meet link already being created |
 | OTP_EXPIRED | 410 | code expired |
 | FILE_TOO_LARGE | 413 | > 5 MB |
 | PAYLOAD_TOO_LARGE | 413 | body > 20 kb |
@@ -53,7 +79,8 @@ Base URL: `{API}/api/v1` (local `http://localhost:8000/api/v1`). All bodies JSON
 | OTP_LOCKED | 429 | 5 wrong attempts; request a new code |
 | EMAIL_SEND_FAILED | 502 | OTP email could not be sent |
 | MEET_CREATE_FAILED | 502 | Google failed on admin retry |
-| INTERNAL_ERROR | 500 | anything else |
+| BAD_REQUEST | 4xx | a client error raised by the framework that has no code of its own (for example an unsupported body charset) |
+| INTERNAL_ERROR | 500 | anything else; in production every 5xx |
 
 ### Common field rules
 
@@ -88,7 +115,7 @@ Errors: VALIDATION_FAILED, OTP_COOLDOWN, OTP_SEND_LIMIT, RATE_LIMITED (10 / 15 m
 ### POST /vm/otp/verify
 
 Body `{ email, otp }` (6 digits) → 200 `data: { bookingToken, expiresInSec: 1800 }`.
-Errors: OTP_NOT_FOUND, OTP_INVALID (`attemptsLeft`), OTP_EXPIRED, OTP_LOCKED, RATE_LIMITED.
+Errors: OTP_NOT_FOUND, OTP_INVALID (`attemptsLeft`), OTP_EXPIRED, OTP_LOCKED, RATE_LIMITED (10 / 15 min / IP).
 
 ### GET /vm/calendar?from=YYYY-MM-DD&to=YYYY-MM-DD
 
@@ -145,13 +172,13 @@ Errors: VALIDATION_FAILED, CAPTCHA_FAILED, DATE_NOT_BOOKABLE (reason may be `clo
 
 ## Admin auth (`/admin/auth`)
 
-Session = httpOnly cookie `oe_admin` (path `/api/v1/admin`). Frontend sends `credentials: "include"`.
+Session = httpOnly cookie `oe_admin` (path `/api/v1/admin`, `SameSite=Lax`, `Secure` when `NODE_ENV=production`, 8 hours). Frontend sends `credentials: "include"`.
 
 | Method | Path | Body | 200 data | Errors |
 | --- | --- | --- | --- | --- |
 | POST | /admin/auth/login | `{ email, password }` | `{ email }` + Set-Cookie | INVALID_CREDENTIALS, RATE_LIMITED (5 / 15 min / IP) |
-| POST | /admin/auth/logout | `{}` | `null` (cookie cleared) | |
-| GET | /admin/auth/me | | `{ email, expiresAt }` | ADMIN_UNAUTHORIZED |
+| POST | /admin/auth/logout | `{}` (no fields) | `null` (cookie cleared) | ADMIN_UNAUTHORIZED |
+| GET | /admin/auth/me | (no query) | `{ email, expiresAt }` | ADMIN_UNAUTHORIZED |
 
 All other `/admin/*` routes: ADMIN_UNAUTHORIZED without a session; writes also CSRF_REJECTED.
 
@@ -220,10 +247,10 @@ Errors: DATE_NOT_BOOKABLE (past/non-working for blocks), NOT_FOUND, NOT_CANCELLA
 | --- | --- | --- | --- |
 | POST | /admin/callback/blocks | `{ date, period?, allDay?, performedBy, reason }` | `{ blocked: ["morning"] }` |
 | POST | /admin/callback/blocks/remove | `{ date, period?, allDay?, performedBy, reason }` | `{ unblocked: ["morning"] }` |
-| POST | /admin/callback/requests/cancel | `{ requestIds: [..] (1–50), performedBy, reason }` | `{ cancelled: [ids], skipped: [ { id, reason } ] }` |
-| PATCH | /admin/callback/requests/:requestId | `{ status: "pending"|"completed"|"no_answer", performedBy }` | `{ requestId, status }` |
+| POST | /admin/callback/requests/cancel | `{ requestIds: [..] (1–50), performedBy, reason }` | `{ cancelled: [ids], skipped: [ { id, reason: "not_found"\|"already_cancelled"\|"not_pending" } ] }` |
+| PATCH | /admin/callback/requests/:requestId | `{ status: "pending"\|"completed"\|"no_answer", performedBy }` | `{ requestId, status }` (409 `CONFLICT` if the request is cancelled) |
 | PUT | /admin/settings/callback-capacity | `{ morning, afternoon, evening (0–50), performedBy, reason }` | `{ callbackCapacity }` |
-| POST | /admin/holidays | `{ date, name (2–100), performedBy, reason }` | `{ holiday, affected: { vmBookings, callbackRequests } }` |
+| POST | /admin/holidays | `{ date, name (2–100), performedBy, reason }` | `{ holiday, affected: { vmBookings, callbackRequests } }` (409 `CONFLICT` if the date is already a holiday) |
 | POST | /admin/holidays/bulk | `{ holidays: [ { date, name } ] (1–60), performedBy, reason }` | `{ added: [dates], skipped: [ { date, reason: "exists"|"closed_by_rule" } ], affected: { vmBookings, callbackRequests } }` |
 | PATCH | /admin/holidays/:date | `{ name, performedBy, reason }` | `{ holiday }` |
 | DELETE | /admin/holidays/:date | `{ performedBy, reason }` | `{ date }` |
@@ -234,4 +261,4 @@ Blocking a callback period never cancels existing requests. Lowering capacity ne
 
 ## Health
 
-`GET /health` → 200 `{ status: "ok", db: "up", uptime }` or 503 with `db: "down"`.
+`GET /health` (no `/api/v1` prefix, not rate limited, no session needed) → 200 `{ "status": "ok", "db": "up", "uptime": 123 }` while MongoDB is connected, otherwise 503 `{ "status": "unavailable", "db": "down", "uptime": 123 }`. `uptime` is whole seconds since the process started.

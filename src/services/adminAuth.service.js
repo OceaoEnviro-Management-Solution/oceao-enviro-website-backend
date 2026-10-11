@@ -9,11 +9,12 @@ import crypto from "node:crypto";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { config } from "../config/env.js";
+import { SECURITY, adminCookieOptions } from "../config/security.js";
 
-const ADMIN_COOKIE_NAME = "oe_admin";
-const ADMIN_COOKIE_PATH = "/api/v1/admin";
+const ADMIN_COOKIE_NAME = SECURITY.adminCookie.name;
+const ADMIN_COOKIE_PATH = SECURITY.adminCookie.path;
 const ADMIN_SUBJECT = "admin";
-const SESSION_SECONDS = 8 * 60 * 60;
+const SESSION_SECONDS = SECURITY.adminCookie.sessionSeconds;
 
 const sha256 = (value) => crypto.createHash("sha256").update(value).digest();
 
@@ -65,13 +66,9 @@ const verifySessionToken = (token) => {
     return { expiresAt: new Date(payload.exp * 1000) };
 };
 
-// Options for res.cookie / res.clearCookie. clearCookie only works with the same path, so both share these.
-const sessionCookieOptions = () => ({
-    httpOnly: true,
-    sameSite: "lax",
-    secure: config.NODE_ENV === "production",
-    path: ADMIN_COOKIE_PATH,
-});
+// Options for res.cookie / res.clearCookie (flags live in config/security.js). clearCookie only
+// works with the same path, so both share these.
+const sessionCookieOptions = adminCookieOptions;
 
 const SESSION_COOKIE_MAX_AGE_MS = SESSION_SECONDS * 1000;
 

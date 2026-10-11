@@ -26,6 +26,7 @@ const callbackBlockSchema = z
         performedBy,
         reason,
     })
+    .strict()
     .superRefine(({ period, allDay }, ctx) => {
         if ((period === undefined) === (allDay === undefined)) {
             ctx.addIssue({
@@ -44,16 +45,16 @@ const cancelRequestsSchema = z.object({
         .max(50, "Cancel at most 50 requests at a time"),
     performedBy,
     reason,
-});
+}).strict();
 
 // PATCH /admin/callback/requests/:requestId   ("cancelled" is not a status you can set here)
 const requestStatusSchema = z.object({
     status: z.enum(["pending", "completed", "no_answer"], { error: "Must be one of: pending, completed, no_answer" }),
     performedBy,
-});
+}).strict();
 
 // :requestId in the path
-const requestIdParamsSchema = z.object({ requestId });
+const requestIdParamsSchema = z.object({ requestId }).strict();
 
 // PUT /admin/settings/callback-capacity
 const capacityField = (label) =>
@@ -69,29 +70,31 @@ const capacitySchema = z.object({
     evening: capacityField("Evening"),
     performedBy,
     reason,
-});
+}).strict();
 
 // POST /admin/holidays
-const holidayCreateSchema = z.object({ date: dateKey, name: holidayName, performedBy, reason });
+const holidayCreateSchema = z.object({ date: dateKey, name: holidayName, performedBy, reason }).strict();
 
 // POST /admin/holidays/bulk   (1 to 60 holidays)
 const holidayBulkSchema = z.object({
     holidays: z
-        .array(z.object({ date: dateKey, name: holidayName }), { error: "holidays must be a list of { date, name }" })
+        .array(z.object({ date: dateKey, name: holidayName }).strict(), {
+            error: "holidays must be a list of { date, name }",
+        })
         .min(1, "Send at least one holiday")
         .max(60, "Add at most 60 holidays at a time"),
     performedBy,
     reason,
-});
+}).strict();
 
 // PATCH /admin/holidays/:date
-const holidayRenameSchema = z.object({ name: holidayName, performedBy, reason });
+const holidayRenameSchema = z.object({ name: holidayName, performedBy, reason }).strict();
 
 // DELETE /admin/holidays/:date   (the reason travels in the body)
-const holidayDeleteSchema = z.object({ performedBy, reason });
+const holidayDeleteSchema = z.object({ performedBy, reason }).strict();
 
 // :date in the path
-const dateParamsSchema = z.object({ date: dateKey });
+const dateParamsSchema = z.object({ date: dateKey }).strict();
 
 export {
     callbackBlockSchema,

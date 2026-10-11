@@ -29,7 +29,7 @@ const flag = z
     .transform((value) => value === "true");
 
 // GET /admin/dashboard?date   (default: today in IST, applied by the service)
-const dashboardQuerySchema = z.object({ date: dateKey.optional() });
+const dashboardQuerySchema = z.object({ date: dateKey.optional() }).strict();
 
 // GET /admin/bookings?from&to&type&includeCancelled   (at most 62 dates, inclusive)
 const bookingsQuerySchema = z
@@ -39,6 +39,7 @@ const bookingsQuerySchema = z
         type: z.enum(["all", "vm", "callback"], { error: "Must be one of: all, vm, callback" }).default("all"),
         includeCancelled: flag,
     })
+    .strict()
     .superRefine(({ from, to }, ctx) => {
         // Only compare once both are valid dates (otherwise the field errors above already apply).
         if (!isValidDateKey(from) || !isValidDateKey(to)) return;
@@ -55,16 +56,16 @@ const bookingsQuerySchema = z
     });
 
 // GET /admin/vm/calendar?month
-const monthQuerySchema = z.object({ month });
+const monthQuerySchema = z.object({ month }).strict();
 
 // GET /admin/vm/availability?date  and  GET /admin/callback/availability?date
-const dateQuerySchema = z.object({ date: dateKey });
+const dateQuerySchema = z.object({ date: dateKey }).strict();
 
 // GET /admin/callback/requests?date&period
-const callbackRequestsQuerySchema = z.object({ date: dateKey, period: period.optional() });
+const callbackRequestsQuerySchema = z.object({ date: dateKey, period: period.optional() }).strict();
 
 // GET /admin/holidays?year
-const holidaysQuerySchema = z.object({ year });
+const holidaysQuerySchema = z.object({ year }).strict();
 
 export {
     dashboardQuerySchema,

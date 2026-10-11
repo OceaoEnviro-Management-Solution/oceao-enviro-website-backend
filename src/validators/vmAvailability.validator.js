@@ -9,6 +9,7 @@ const dateKey = z
 
 const calendarQuerySchema = z
     .object({ from: dateKey, to: dateKey })
+    .strict()
     .superRefine(({ from, to }, ctx) => {
         // Only compare once both are valid dates (otherwise the field errors above already apply).
         if (!isValidDateKey(from) || !isValidDateKey(to)) return;
@@ -24,6 +25,6 @@ const calendarQuerySchema = z
         }
     });
 
-const availabilityQuerySchema = z.object({ date: dateKey });
+const availabilityQuerySchema = z.object({ date: dateKey }).strict();
 
 export { calendarQuerySchema, availabilityQuerySchema };

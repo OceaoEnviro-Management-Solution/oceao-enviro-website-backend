@@ -1,8 +1,10 @@
 import { rateLimit, MemoryStore } from "express-rate-limit";
 import { ApiError } from "../utils/ApiError.js";
 import { config } from "../config/env.js";
+import { SECURITY } from "../config/security.js";
 
-const FIFTEEN_MINUTES = 15 * 60 * 1000;
+const { rateLimits } = SECURITY;
+const FIFTEEN_MINUTES = rateLimits.windowMinutes * 60 * 1000;
 
 // Test hook: limiters are off when NODE_ENV=test unless a test switches them on.
 // In every other environment they are always on and this state is never touched.
@@ -36,16 +38,16 @@ const createLimiter = (limit) => {
 };
 
 // Query and feedback forms: 5 requests / 15 min / IP
-const publicFormLimiter = createLimiter(5);
+const publicFormLimiter = createLimiter(rateLimits.publicForms);
 
 // Everything under /api: 300 requests / 15 min / IP
-const globalLimiter = createLimiter(300);
+const globalLimiter = createLimiter(rateLimits.globalApi);
 
 // Virtual meeting OTP: 10 sends and 10 verifications / 15 min / IP (separate counters)
-const otpSendLimiter = createLimiter(10);
-const otpVerifyLimiter = createLimiter(10);
+const otpSendLimiter = createLimiter(rateLimits.otpSend);
+const otpVerifyLimiter = createLimiter(rateLimits.otpVerify);
 
 // Admin login: 5 attempts / 15 min / IP
-const adminLoginLimiter = createLimiter(5);
+const adminLoginLimiter = createLimiter(rateLimits.adminLogin);
 
 export { publicFormLimiter, globalLimiter, otpSendLimiter, otpVerifyLimiter, adminLoginLimiter, rateLimitControl };

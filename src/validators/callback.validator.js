@@ -33,6 +33,6 @@ const createCallbackRequestSchema = z.object({
         error: `Period must be one of: ${BOOKING.callback.periodOrder.join(", ")}`,
     }),
     reason: optionalText(500, "Reason"),
-});
+}).strict();
 
 export { createCallbackRequestSchema };

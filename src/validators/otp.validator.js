@@ -8,7 +8,7 @@ const email = z
     .email("Invalid email address")
     .toLowerCase();
 
-const sendOtpSchema = z.object({ email });
+const sendOtpSchema = z.object({ email }).strict();
 
 const verifyOtpSchema = z.object({
     email,
@@ -16,6 +16,6 @@ const verifyOtpSchema = z.object({
         .string()
         .trim()
         .regex(new RegExp(`^\\d{${BOOKING.otp.length}}$`), `Code must be ${BOOKING.otp.length} digits`),
-});
+}).strict();
 
 export { sendOtpSchema, verifyOtpSchema };

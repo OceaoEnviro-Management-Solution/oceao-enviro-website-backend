@@ -30,6 +30,7 @@ const slotTargetSchema = z
         performedBy,
         reason,
     })
+    .strict()
     .superRefine(({ time, allDay }, ctx) => {
         if ((time === undefined) === (allDay === undefined)) {
             ctx.addIssue({
@@ -45,10 +46,10 @@ const cancelBookingSchema = z.object({
     performedBy,
     reason,
     alsoBlock: z.boolean({ error: "alsoBlock must be true or false" }).default(false),
-});
+}).strict();
 
 // POST /admin/vm/bookings/:bookingId/retry-meet
-const retryMeetSchema = z.object({ performedBy });
+const retryMeetSchema = z.object({ performedBy }).strict();
 
 // :bookingId in the path
 const bookingIdParamsSchema = z.object({
@@ -56,7 +57,7 @@ const bookingIdParamsSchema = z.object({
         .string()
         .trim()
         .regex(BOOKING_ID_PATTERN, "Must look like OE-VM-YYMMDD-XXXX"),
-});
+}).strict();
 
 // dateKey, performedBy and reason are shared with the other admin write validators.
 export { dateKey, performedBy, reason, slotTargetSchema, cancelBookingSchema, retryMeetSchema, bookingIdParamsSchema };

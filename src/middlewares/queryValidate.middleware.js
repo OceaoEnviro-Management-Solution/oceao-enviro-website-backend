@@ -1,27 +1,7 @@
-import { asyncHandler } from "../utils/asyncHandler.js"
-import { ApiError } from "../utils/ApiError.js";
+import { validateBody } from "./validateBody.middleware.js";
 import { querySchema } from "../validators/query.validator.js";
 
-const queryValidate = asyncHandler(async (req, res, next) => {
-    // const { name, email, mobileNumber, organisation, industry, source, subject, query } = req.body;
-    // console.log(name, email, mobileNumber, organisation, industry, source, subject, query);
-    // const queryData = {
-    //     name: name,
-    //     email: email,
-    //     mobileNumber: mobileNumber,
-    //     organisation: organisation,
-    //     industry: industry,
-    //     source: source,
-    //     subject: subject,
-    //     query: query
-    // }
-    const validationResult = querySchema.safeParse(req.body);
-    if (!validationResult.success) {
-        const errorMessages = validationResult.error.flatten().fieldErrors;
-        throw new ApiError(400, "VALIDATION_FAILED", "Validation failed", errorMessages);
-    }
-    req.body = validationResult.data;
-    next();
-});
+// POST /query/new-query body (multipart text fields). Unknown fields are a 400.
+const queryValidate = validateBody(querySchema);
 
 export { queryValidate };

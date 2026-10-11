@@ -2,6 +2,7 @@ import multer from "multer"
 import { fileTypeFromBuffer } from "file-type"
 import { ApiError } from "../utils/ApiError.js"
 import { asyncHandler } from "../utils/asyncHandler.js"
+import { SECURITY } from "../config/security.js"
 
 const INVALID_FILE_MESSAGE = "Invalid file type. Only PDF, JPG, JPEG and PNG files are allowed.";
 
@@ -22,10 +23,10 @@ const fileFilter = (req, file, cb) => {
 export const upload = multer({
   storage: multer.memoryStorage(),
   limits: {
-    fileSize: 5 * 1024 * 1024,   // 5 MB
-    files: 1,
-    fields: 10,
-    fieldSize: 10 * 1024         // 10 KB
+    fileSize: SECURITY.upload.maxFileBytes,
+    files: SECURITY.upload.maxFiles,
+    fields: SECURITY.upload.maxFields,
+    fieldSize: SECURITY.upload.maxFieldBytes
   },
   fileFilter: fileFilter,
 })
