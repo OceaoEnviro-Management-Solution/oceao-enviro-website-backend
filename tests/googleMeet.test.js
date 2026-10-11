@@ -506,6 +506,7 @@ describe("Google Meet", () => {
                         COMPANY_MAIL: "d@e.f",
                         OTP_SECRET: TEST_OTP_SECRET,
                         BOOKING_TOKEN_SECRET: TEST_BOOKING_TOKEN_SECRET,
+                        TURNSTILE_SECRET_KEY: "1x0000000000000000000000000000000AA",
                         GOOGLE_CLIENT_ID: "client-id-123.apps.googleusercontent.com",
                         GOOGLE_CLIENT_SECRET: "client-secret-456",
                     },

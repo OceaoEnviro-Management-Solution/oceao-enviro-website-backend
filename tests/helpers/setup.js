@@ -4,6 +4,8 @@ import { MongoMemoryServer } from "mongodb-memory-server";
 // Test environment. Set before the app is imported so src/config/env.js validates these
 // and nothing is ever read from a developer's .env (dotenv is not loaded here).
 export const TEST_COMPANY_MAIL = "company@oceao.test";
+// The fake Turnstile verifier accepts exactly this token; anything else fails.
+export const TEST_CAPTCHA_TOKEN = "test-turnstile-token";
 export const TEST_OTP_SECRET = "test-otp-secret-0123456789-abcdefghijklmnop";
 export const TEST_BOOKING_TOKEN_SECRET = "test-booking-token-secret-0123456789-abcdefgh";
 const TEST_ENV = {
@@ -12,6 +14,7 @@ const TEST_ENV = {
     CORS_ORIGINS: "http://localhost:5173",
     MAIL_FROM: "Oceao Enviro <no-reply@oceao.test>",
     COMPANY_MAIL: TEST_COMPANY_MAIL,
+    TURNSTILE_SECRET_KEY: "1x0000000000000000000000000000000AA",
     OTP_SECRET: TEST_OTP_SECRET,
     BOOKING_TOKEN_SECRET: TEST_BOOKING_TOKEN_SECRET,
     TRUST_PROXY: "0",
@@ -34,6 +37,10 @@ export const startTestEnv = async () => {
     ({ app } = await import("../../src/app.js"));
     ({ outbox } = await import("../../src/services/email/email.transporter.js"));
     ({ rateLimitControl } = await import("../../src/middlewares/rateLimit.js"));
+
+    // No test may reach Cloudflare: the verifier accepts only TEST_CAPTCHA_TOKEN.
+    const { setTurnstileVerifier } = await import("../../src/services/turnstile.service.js");
+    setTurnstileVerifier(async (token) => token === TEST_CAPTCHA_TOKEN);
 
     // Unique and TTL indexes must exist before any test relies on them.
     const { initModels } = await import("../../src/models/index.js");

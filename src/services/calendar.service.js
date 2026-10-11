@@ -59,28 +59,33 @@ const evaluateDay = async (
 const getVmDayStatus = (dateKey, now = new Date()) =>
     evaluateDay(dateKey, now, { horizonDays: BOOKING.vm.horizonDays, isWorkingDay: isVmWorkingDay });
 
-/**
- * getVmDayStatus for many dates with a single holidays query.
- * @param {string[]} dateKeys
- * @returns {Promise<Array<{ bookable: boolean, reason: string | null }>>} same order as dateKeys
- */
-const getVmDayStatuses = async (dateKeys, now = new Date()) => {
+// Day statuses for many dates with a single holidays query.
+const getDayStatuses = async (dateKeys, now, rules) => {
     const candidates = dateKeys.filter(isValidDateKey);
     const holidays = candidates.length > 0
         ? new Set((await Holiday.find({ date: { $in: candidates } }).select({ date: 1, _id: 0 }).lean()).map((h) => h.date))
         : new Set();
 
     return Promise.all(
-        dateKeys.map((dateKey) =>
-            evaluateDay(
-                dateKey,
-                now,
-                { horizonDays: BOOKING.vm.horizonDays, isWorkingDay: isVmWorkingDay },
-                (key) => holidays.has(key)
-            )
-        )
+        dateKeys.map((dateKey) => evaluateDay(dateKey, now, rules, (key) => holidays.has(key)))
     );
 };
+
+/**
+ * getVmDayStatus for many dates with a single holidays query.
+ * @param {string[]} dateKeys
+ * @returns {Promise<Array<{ bookable: boolean, reason: string | null }>>} same order as dateKeys
+ */
+const getVmDayStatuses = (dateKeys, now = new Date()) =>
+    getDayStatuses(dateKeys, now, { horizonDays: BOOKING.vm.horizonDays, isWorkingDay: isVmWorkingDay });
+
+/**
+ * getCallbackDayStatus for many dates with a single holidays query.
+ * @param {string[]} dateKeys
+ * @returns {Promise<Array<{ bookable: boolean, reason: string | null }>>} same order as dateKeys
+ */
+const getCallbackDayStatuses = (dateKeys, now = new Date()) =>
+    getDayStatuses(dateKeys, now, { horizonDays: BOOKING.callback.horizonDays, isWorkingDay: isCallbackWorkingDay });
 
 /**
  * Is this slot time bookable right now? False for a time that is not a configured
@@ -124,6 +129,7 @@ export {
     getVmDayStatuses,
     isVmSlotTimeOpen,
     getCallbackDayStatus,
+    getCallbackDayStatuses,
     isCallbackPeriodOpen,
     isClosedByRule,
 };

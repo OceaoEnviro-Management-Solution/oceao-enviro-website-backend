@@ -16,7 +16,7 @@ export const MAX_CALENDAR_RANGE_DAYS = 62;
 
 const SLOT_TIMES = BOOKING.vm.slotTimes;
 
-const enumerateDates = (from, to) => {
+export const enumerateDates = (from, to) => {
     const dates = [];
     for (let date = from; date <= to; date = addDays(date, 1)) {
         dates.push(date);

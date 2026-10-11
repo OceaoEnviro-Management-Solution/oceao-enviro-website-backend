@@ -548,6 +548,7 @@ describe("virtual meeting OTP", () => {
                     COMPANY_MAIL: TEST_COMPANY_MAIL,
                     OTP_SECRET: TEST_OTP_SECRET,
                     BOOKING_TOKEN_SECRET: TEST_BOOKING_TOKEN_SECRET,
+                    TURNSTILE_SECRET_KEY: "1x0000000000000000000000000000000AA",
                 },
             });
             assert.equal(result.status, 0, result.stderr);

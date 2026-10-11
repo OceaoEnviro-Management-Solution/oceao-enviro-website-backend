@@ -8,6 +8,7 @@ import {
     getApp,
     emailOutbox,
     TEST_COMPANY_MAIL,
+    TEST_CAPTCHA_TOKEN,
     PNG_BUFFER,
     PDF_BUFFER,
 } from "./helpers/setup.js";
@@ -25,10 +26,12 @@ const validFeedback = (overrides = {}) => ({
     ...overrides,
 });
 
-// Sends fields as multipart form data, optionally with a file under "attachment".
-const submit = (fields, file) => {
+// Sends fields as multipart form data, optionally with a file under "attachment", with a
+// valid Turnstile token unless `token` is overridden (null leaves it out).
+const submit = (fields, file, { token = TEST_CAPTCHA_TOKEN } = {}) => {
     const req = request(getApp()).post(URL);
     for (const [key, value] of Object.entries(fields)) req.field(key, value);
+    if (token !== null) req.field("turnstileToken", token);
     if (file) req.attach("attachment", file.buffer, { filename: file.filename, contentType: file.contentType });
     return req;
 };
@@ -37,6 +40,44 @@ describe("POST /api/v1/feedback/new-feedback", () => {
     before(startTestEnv);
     after(stopTestEnv);
     beforeEach(resetState);
+
+    describe("CAPTCHA", () => {
+        it("a missing token gives 400 CAPTCHA_FAILED and sends nothing", async () => {
+            const res = await submit(validFeedback(), null, { token: null });
+
+            assert.equal(res.status, 400);
+            assert.equal(res.body.success, false);
+            assert.equal(res.body.code, "CAPTCHA_FAILED");
+            assert.equal(emailOutbox.all().length, 0);
+        });
+
+        it("an invalid token gives 400 CAPTCHA_FAILED, also with a valid attachment", async () => {
+            const res = await submit(
+                validFeedback(),
+                { buffer: PDF_BUFFER, filename: "report.pdf", contentType: "application/pdf" },
+                { token: "wrong-token" }
+            );
+
+            assert.equal(res.status, 400);
+            assert.equal(res.body.code, "CAPTCHA_FAILED");
+            assert.equal(emailOutbox.all().length, 0);
+        });
+
+        it("is checked before the fields are validated", async () => {
+            const res = await submit({ name: "A" }, null, { token: null });
+
+            assert.equal(res.body.code, "CAPTCHA_FAILED");
+        });
+
+        it("the token is not passed on to the emails", async () => {
+            await submit(validFeedback());
+
+            for (const mail of emailOutbox.all()) {
+                assert.equal(mail.text.includes(TEST_CAPTCHA_TOKEN), false);
+                assert.equal(mail.html.includes(TEST_CAPTCHA_TOKEN), false);
+            }
+        });
+    });
 
     it("accepts feedback without a file", async () => {
         const res = await submit(validFeedback());

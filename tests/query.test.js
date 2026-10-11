@@ -9,6 +9,7 @@ import {
     emailOutbox,
     rateLimiting,
     TEST_COMPANY_MAIL,
+    TEST_CAPTCHA_TOKEN,
 } from "./helpers/setup.js";
 
 const URL = "/api/v1/query/new-query";
@@ -25,10 +26,12 @@ const validQuery = (overrides = {}) => ({
     ...overrides,
 });
 
-// Sends the fields as multipart form data, the same way the website form does.
-const submit = (fields) => {
+// Sends the fields as multipart form data, the same way the website form does, with a
+// valid Turnstile token unless `token` is overridden (null leaves it out).
+const submit = (fields, { token = TEST_CAPTCHA_TOKEN } = {}) => {
     const req = request(getApp()).post(URL);
     for (const [key, value] of Object.entries(fields)) req.field(key, value);
+    if (token !== null) req.field("turnstileToken", token);
     return req;
 };
 
@@ -36,6 +39,42 @@ describe("POST /api/v1/query/new-query", () => {
     before(startTestEnv);
     after(stopTestEnv);
     beforeEach(resetState);
+
+    describe("CAPTCHA", () => {
+        it("a missing token gives 400 CAPTCHA_FAILED and sends nothing", async () => {
+            const res = await submit(validQuery(), { token: null });
+
+            assert.equal(res.status, 400);
+            assert.equal(res.body.success, false);
+            assert.equal(res.body.code, "CAPTCHA_FAILED");
+            assert.equal(emailOutbox.all().length, 0);
+        });
+
+        it("an invalid or empty token gives 400 CAPTCHA_FAILED", async () => {
+            for (const token of ["wrong-token", "", "   "]) {
+                const res = await submit(validQuery(), { token });
+
+                assert.equal(res.status, 400, JSON.stringify(token));
+                assert.equal(res.body.code, "CAPTCHA_FAILED");
+            }
+            assert.equal(emailOutbox.all().length, 0);
+        });
+
+        it("is checked before the fields are validated", async () => {
+            const res = await submit({ name: "R" }, { token: null });
+
+            assert.equal(res.body.code, "CAPTCHA_FAILED");
+        });
+
+        it("the token is not passed on to the emails", async () => {
+            await submit(validQuery());
+
+            for (const mail of emailOutbox.all()) {
+                assert.equal(mail.text.includes(TEST_CAPTCHA_TOKEN), false);
+                assert.equal(mail.html.includes(TEST_CAPTCHA_TOKEN), false);
+            }
+        });
+    });
 
     it("accepts a valid submission and sends two emails", async () => {
         const res = await submit(validQuery());

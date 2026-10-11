@@ -41,12 +41,14 @@ const envSchema = z
         OTP_SECRET: requiredSecret(),
         BOOKING_TOKEN_SECRET: requiredSecret(),
 
+        // Cloudflare Turnstile secret (local test key: 1x0000000000000000000000000000000AA)
+        TURNSTILE_SECRET_KEY: required(),
+
         // Optional until the stage that uses them
         GOOGLE_CLIENT_ID: optional(),
         GOOGLE_CLIENT_SECRET: optional(),
         GOOGLE_REFRESH_TOKEN: optional(),
         GOOGLE_CALENDAR_ID: z.preprocess(blankToUndefined, z.string().trim().default("primary")),
-        TURNSTILE_SECRET_KEY: optional(),
         ADMIN_EMAIL: optional(),
         ADMIN_PASSWORD_HASH: optional(),
         ADMIN_JWT_SECRET: secret(),
