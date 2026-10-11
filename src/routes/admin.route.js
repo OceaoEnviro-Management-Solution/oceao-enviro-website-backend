@@ -10,8 +10,15 @@ import {
     handleSettings,
     handleHolidays,
 } from "../controllers/adminRead.controller.js";
+import {
+    handleVmBlock,
+    handleVmUnblock,
+    handleVmCancel,
+    handleVmRetryMeet,
+} from "../controllers/adminVm.controller.js";
 import { validateBody } from "../middlewares/validateBody.middleware.js";
 import { validateQuery } from "../middlewares/validateQuery.middleware.js";
+import { validateParams } from "../middlewares/validateParams.middleware.js";
 import { adminLoginLimiter } from "../middlewares/rateLimit.js";
 import { requireAdmin } from "../middlewares/requireAdmin.js";
 import { adminCsrf } from "../middlewares/adminCsrf.js";
@@ -24,6 +31,12 @@ import {
     callbackRequestsQuerySchema,
     holidaysQuerySchema,
 } from "../validators/adminRead.validator.js";
+import {
+    slotTargetSchema,
+    cancelBookingSchema,
+    retryMeetSchema,
+    bookingIdParamsSchema,
+} from "../validators/adminVm.validator.js";
 
 const router = Router();
 
@@ -47,6 +60,22 @@ router.get("/callback/requests", validateQuery(callbackRequestsQuerySchema), han
 router.get("/settings", handleSettings);
 router.get("/holidays", validateQuery(holidaysQuerySchema), handleHolidays);
 
-// Phase 5 adds the admin write routes below.
+// ── VM actions (each writes one audit entry) ──────────────────────────────────
+router.post("/vm/blocks", validateBody(slotTargetSchema), handleVmBlock);
+router.post("/vm/blocks/remove", validateBody(slotTargetSchema), handleVmUnblock);
+router.post(
+    "/vm/bookings/:bookingId/cancel",
+    validateParams(bookingIdParamsSchema),
+    validateBody(cancelBookingSchema),
+    handleVmCancel
+);
+router.post(
+    "/vm/bookings/:bookingId/retry-meet",
+    validateParams(bookingIdParamsSchema),
+    validateBody(retryMeetSchema),
+    handleVmRetryMeet
+);
+
+// Phase 5 adds the callback and settings write routes below.
 
 export { router as adminRouter };

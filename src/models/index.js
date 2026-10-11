@@ -7,6 +7,7 @@ import { CallbackRequest } from "./callbackRequest.model.js";
 import { OtpChallenge } from "./otpChallenge.model.js";
 import { Holiday } from "./holiday.model.js";
 import { Settings } from "./settings.model.js";
+import { AuditLog } from "./auditLog.model.js";
 
 export const models = Object.freeze({
     VmSlot,
@@ -16,6 +17,7 @@ export const models = Object.freeze({
     OtpChallenge,
     Holiday,
     Settings,
+    AuditLog,
 });
 
 /**
@@ -24,4 +26,4 @@ export const models = Object.freeze({
  */
 export const initModels = () => Promise.all(Object.values(models).map((model) => model.init()));
 
-export { VmSlot, VmBooking, CallbackBucket, CallbackRequest, OtpChallenge, Holiday, Settings };
+export { VmSlot, VmBooking, CallbackBucket, CallbackRequest, OtpChallenge, Holiday, Settings, AuditLog };
