@@ -41,7 +41,8 @@ describe("calendar rules", () => {
             assert.throws(() => { "use strict"; BOOKING.vm.horizonDays = 99; }, TypeError);
 
             assert.equal(BOOKING.timezone, "Asia/Kolkata");
-            assert.deepEqual(BOOKING.vm.workingDays, [1, 2, 3, 4, 5]);
+            assert.deepEqual(BOOKING.vm.workingDays, [1, 2, 3, 4, 5, 6]);
+            assert.deepEqual(BOOKING.vm.closedSaturdaysOfMonth, [2]);
             assert.deepEqual(BOOKING.vm.slotTimes, ["10:00", "12:00", "14:00", "16:00"]);
             assert.equal(BOOKING.vm.minLeadMinutes, 120);
             assert.deepEqual(BOOKING.callback.workingDays, [1, 2, 3, 4, 5, 6]);
@@ -111,9 +112,28 @@ describe("calendar rules", () => {
         // Wed 14 Oct 2026, 10:30 IST
         const now = new Date("2026-10-14T05:00:00Z");
 
-        it("closes Saturday and Sunday", async () => {
-            assert.deepEqual(await getVmDayStatus("2026-10-17", now), { bookable: false, reason: "non_working_day" });
+        it("closes Sunday", async () => {
             assert.deepEqual(await getVmDayStatus("2026-10-18", now), { bookable: false, reason: "non_working_day" });
+        });
+
+        it("keeps the 1st, 3rd, 4th and 5th Saturday open (October 2026)", async () => {
+            for (const date of ["2026-10-03", "2026-10-17", "2026-10-24", "2026-10-31"]) {
+                const status = await getVmDayStatus(date, new Date("2026-10-01T05:00:00Z"));
+                assert.deepEqual(status, { bookable: true, reason: null }, date);
+            }
+        });
+
+        it("closes the 2nd Saturday of every month, as callbacks do (Oct to Dec 2026)", async () => {
+            const earlier = new Date("2026-10-01T05:00:00Z");
+            assert.deepEqual(await getVmDayStatus("2026-10-10", earlier), { bookable: false, reason: "non_working_day" });
+
+            const november = new Date("2026-11-04T05:00:00Z");
+            assert.deepEqual(await getVmDayStatus("2026-11-14", november), { bookable: false, reason: "non_working_day" });
+            assert.deepEqual(await getVmDayStatus("2026-11-07", november), { bookable: true, reason: null });
+            assert.deepEqual(await getVmDayStatus("2026-11-21", november), { bookable: true, reason: null });
+
+            const december = new Date("2026-12-02T05:00:00Z");
+            assert.deepEqual(await getVmDayStatus("2026-12-12", december), { bookable: false, reason: "non_working_day" });
         });
 
         it("opens Monday to Friday", async () => {

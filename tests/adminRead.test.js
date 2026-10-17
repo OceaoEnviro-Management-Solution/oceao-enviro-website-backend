@@ -479,14 +479,18 @@ describe("Admin read endpoints", () => {
             });
         });
 
-        it("weekends do not run VM (Saturday and Sunday are working: false)", async () => {
+        it("Sunday and the 2nd Saturday do not run VM; the other Saturdays do", async () => {
             const { days } = (await get("/vm/calendar?month=2030-03")).body.data;
 
-            for (const date of [SUNDAY, SECOND_SATURDAY, FIRST_SATURDAY]) {
+            for (const date of [SUNDAY, SECOND_SATURDAY]) {
                 const entry = days.find((d) => d.date === date);
                 assert.equal(entry.working, false, date);
                 assert.equal(entry.available, 0, date);
             }
+
+            const first = days.find((d) => d.date === FIRST_SATURDAY);
+            assert.equal(first.working, true);
+            assert.equal(first.available, 4);
         });
 
         it("covers past and far future months and month lengths", async () => {

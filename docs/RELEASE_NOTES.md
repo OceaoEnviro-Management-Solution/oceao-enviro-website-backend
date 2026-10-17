@@ -15,7 +15,7 @@ All routes are under `/api/v1` unless noted. Every response carries an `X-Reques
 - **Virtual meeting booking** `/vm/*`:
   - Email OTP: 6 digits, valid 5 minutes, 60 second resend cooldown, 5 sends per hour, 5 wrong attempts then locked. The code is stored hashed and is single use.
   - A 30 minute booking token after verification.
-  - Calendar and slot availability: Monday to Friday, 10:00, 12:00, 14:00, 16:00 IST, one hour, up to 30 days ahead, at least 2 hours from now, closed on holidays.
+  - Calendar and slot availability: Monday to Saturday (closed Sundays and the 2nd Saturday of the month), 10:00, 12:00, 14:00, 16:00 IST, one hour, up to 30 days ahead, at least 2 hours from now, closed on holidays.
   - Booking claims the slot with a unique index, so two people can never hold the same slot; one upcoming booking per email.
   - A Google Meet link is created (8 second limit) and emailed to the customer and the company. If Google fails or is not configured the booking still stands and staff can retry.
 - **Callback requests** `/callback/*`: Monday to Saturday (closed Sundays, second Saturdays, holidays), three periods (Morning 9 to 12, Afternoon 12 to 3, Evening 3 to 6), capacity per period (defaults 5, 5, 3), a period closes one hour before it ends. Capacity is claimed atomically; one pending request per email per date.
@@ -34,7 +34,7 @@ All routes are under `/api/v1` unless noted. Every response carries an `X-Reques
 - `GET /health` (no prefix): 200 with `db: "up"`, or 503 with `db: "down"`.
 - Rate limits per IP per 15 minutes: public forms 5, OTP send 10, OTP verify 10, admin login 5, all of `/api` 300.
 - Strict input validation (unknown fields are a 400), helmet, CORS allowlist, 20 kb body limit, generic 5xx responses in production, log redaction, request IDs.
-- Scripts: `npm test` (567 tests, in-memory MongoDB), `npm run check:concurrency` (parallel booking and callback check against a local server), `npm run seed:holidays`, `npm run admin:hash`, `npm run google:auth`, `npm run seed:demo` (development only).
+- Scripts: `npm test` (573 tests, in-memory MongoDB), `npm run check:concurrency` (parallel booking and callback check against a local server), `npm run seed:holidays`, `npm run admin:hash`, `npm run google:auth`, `npm run seed:demo` (development only).
 
 ## 2. Environment variables required in production
 

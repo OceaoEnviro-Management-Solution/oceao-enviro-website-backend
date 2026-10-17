@@ -49,11 +49,28 @@ describe("VM availability endpoints", () => {
             assert.deepEqual(res.body.data.days.map((d) => d.date), [
                 "2026-10-14", "2026-10-15", "2026-10-16", "2026-10-17", "2026-10-18", "2026-10-19", "2026-10-20",
             ]);
-            assert.deepEqual(day(res, "2026-10-17"), { date: "2026-10-17", bookable: false, reason: "non_working_day", availableCount: 0 });
+            assert.deepEqual(day(res, "2026-10-17"), { date: "2026-10-17", bookable: true, reason: null, availableCount: 4 });   // 3rd Saturday
             assert.deepEqual(day(res, "2026-10-18"), { date: "2026-10-18", bookable: false, reason: "non_working_day", availableCount: 0 });
             assert.deepEqual(day(res, "2026-10-20"), { date: "2026-10-20", bookable: false, reason: "holiday", availableCount: 0 });
             assert.deepEqual(day(res, "2026-10-15"), { date: "2026-10-15", bookable: true, reason: null, availableCount: 4 });
             assert.deepEqual(day(res, "2026-10-19"), { date: "2026-10-19", bookable: true, reason: null, availableCount: 4 });
+        });
+
+        it("closes the 2nd Saturday and keeps the other Saturdays open", async () => {
+            freezeTime("2026-11-04T05:00:00Z");
+
+            const res = await calendar("2026-11-07", "2026-11-15");
+
+            assert.deepEqual(day(res, "2026-11-07"), { date: "2026-11-07", bookable: true, reason: null, availableCount: 4 });
+            assert.deepEqual(day(res, "2026-11-14"), { date: "2026-11-14", bookable: false, reason: "non_working_day", availableCount: 0 });
+            assert.deepEqual(day(res, "2026-11-15"), { date: "2026-11-15", bookable: false, reason: "non_working_day", availableCount: 0 });
+
+            const open = await availability("2026-11-07");
+            assert.deepEqual(open.body.data.slots.map((s) => s.time), ["10:00", "12:00", "14:00", "16:00"]);
+            assert.ok(open.body.data.slots.every((s) => s.status === "available"));
+
+            const closed = await availability("2026-11-14");
+            assert.deepEqual(closed.body.data, { date: "2026-11-14", bookable: false, reason: "non_working_day", slots: [] });
         });
 
         it("counts booked and blocked slots as unavailable, without revealing which", async () => {
@@ -251,7 +268,6 @@ describe("VM availability endpoints", () => {
             await Holiday.create({ date: "2026-10-20", name: "Test holiday" });
 
             const expectations = [
-                ["2026-10-17", "non_working_day"],
                 ["2026-10-18", "non_working_day"],
                 ["2026-10-20", "holiday"],
                 ["2026-10-13", "past"],

@@ -122,9 +122,9 @@ Errors: OTP_NOT_FOUND, OTP_INVALID (`attemptsLeft`), OTP_EXPIRED, OTP_LOCKED, RA
 Max 62 days. → 200
 ```json
 { "days": [ { "date": "2026-10-15", "bookable": true, "reason": null, "availableCount": 3 },
-            { "date": "2026-10-17", "bookable": false, "reason": "non_working_day", "availableCount": 0 } ] }
+            { "date": "2026-10-18", "bookable": false, "reason": "non_working_day", "availableCount": 0 } ] }
 ```
-`reason`: null | past | beyond_horizon | non_working_day | holiday | full.
+`reason`: null | past | beyond_horizon | non_working_day | holiday | full. `non_working_day` is every Sunday and the 2nd Saturday of the month (Monday to Saturday run otherwise).
 
 ### GET /vm/availability?date=YYYY-MM-DD
 

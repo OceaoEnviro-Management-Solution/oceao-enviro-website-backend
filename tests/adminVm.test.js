@@ -19,6 +19,7 @@ const TODAY = "2026-10-14";
 const YESTERDAY = "2026-10-13";
 const SATURDAY = "2026-10-17";
 const SUNDAY = "2026-10-18";
+const SECOND_SATURDAY = "2026-11-14";
 const HOLIDAY = "2026-10-16";
 const LINK = "https://meet.google.com/abc-defg-hij";
 
@@ -317,14 +318,21 @@ describe("Admin VM actions", () => {
             assert.equal(await VmSlot.countDocuments(), 0);
         });
 
-        it("a non-working day (Saturday, Sunday) is 422 with reason non_working_day", async () => {
-            for (const date of [SATURDAY, SUNDAY]) {
+        it("a non-working day (Sunday, 2nd Saturday) is 422 with reason non_working_day", async () => {
+            for (const date of [SECOND_SATURDAY, SUNDAY]) {
                 const res = await post(BLOCKS, { date, time: "10:00", ...ADMIN });
 
                 assert.equal(res.status, 422, date);
                 assert.deepEqual(res.body.errors, { reason: "non_working_day" }, date);
             }
             assert.equal(await VmSlot.countDocuments(), 0);
+        });
+
+        it("any other Saturday can be blocked (VM runs on it)", async () => {
+            const res = await post(BLOCKS, { date: SATURDAY, time: "10:00", ...ADMIN });
+
+            assert.equal(res.status, 200);
+            assert.deepEqual(res.body.data.blocked, ["10:00"]);
         });
 
         it("a holiday is 422 with reason holiday", async () => {

@@ -12,7 +12,8 @@ const deepFreeze = (value) => {
 export const BOOKING = deepFreeze({
     timezone: "Asia/Kolkata",
     vm: {
-        workingDays: [1, 2, 3, 4, 5],          // Mon-Fri (0 = Sunday)
+        workingDays: [1, 2, 3, 4, 5, 6],       // Mon-Sat (0 = Sunday)
+        closedSaturdaysOfMonth: [2],           // 2nd Saturday of every month closed
         slotTimes: ["10:00", "12:00", "14:00", "16:00"],
         durationMinutes: 60,
         horizonDays: 30,                       // today + 30 inclusive

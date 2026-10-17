@@ -15,16 +15,17 @@ const open = () => ({ bookable: true, reason: null });
 // Which Saturday of its month a date is: 1 for days 1-7, 2 for days 8-14, ...
 const saturdayOfMonth = (dateKey) => Math.ceil(Number(dateKey.slice(8, 10)) / 7);
 
-const isVmWorkingDay = (dateKey) => BOOKING.vm.workingDays.includes(dayOfWeek(dateKey));
-
-const isCallbackWorkingDay = (dateKey) => {
+// A service's working days (weekday numbers) minus the Saturdays of the month it is closed.
+const isWorkingDay = (dateKey, { workingDays, closedSaturdaysOfMonth }) => {
     const dow = dayOfWeek(dateKey);
-    if (!BOOKING.callback.workingDays.includes(dow)) return false;
-    if (dow === SATURDAY && BOOKING.callback.closedSaturdaysOfMonth.includes(saturdayOfMonth(dateKey))) {
-        return false;
-    }
+    if (!workingDays.includes(dow)) return false;
+    if (dow === SATURDAY && closedSaturdaysOfMonth.includes(saturdayOfMonth(dateKey))) return false;
     return true;
 };
+
+const isVmWorkingDay = (dateKey) => isWorkingDay(dateKey, BOOKING.vm);
+
+const isCallbackWorkingDay = (dateKey) => isWorkingDay(dateKey, BOOKING.callback);
 
 /**
  * True when the weekday rules close the date for BOTH VM and callbacks
@@ -53,7 +54,8 @@ const evaluateDay = async (
 };
 
 /**
- * Can a virtual meeting be booked on this date at all?
+ * Can a virtual meeting be booked on this date at all? Monday to Saturday, except the second
+ * Saturday of the month (vm.closedSaturdaysOfMonth), which is reported as non_working_day.
  * @returns {Promise<{ bookable: boolean, reason: null | "invalid_date" | "past" | "beyond_horizon" | "non_working_day" | "holiday" }>}
  */
 const getVmDayStatus = (dateKey, now = new Date()) =>
@@ -100,8 +102,8 @@ const isVmSlotTimeOpen = (dateKey, time, now = new Date()) => {
 };
 
 /**
- * Can a callback be requested on this date at all? Same reasons as getVmDayStatus;
- * second Saturdays (closedSaturdaysOfMonth) are reported as non_working_day.
+ * Can a callback be requested on this date at all? Same reasons and the same Saturday rule
+ * as getVmDayStatus (callback.workingDays and callback.closedSaturdaysOfMonth).
  */
 const getCallbackDayStatus = (dateKey, now = new Date()) =>
     evaluateDay(dateKey, now, {

@@ -49,7 +49,8 @@ docs/                 this file, API_CONTRACT.md
 export const BOOKING = Object.freeze({
   timezone: "Asia/Kolkata",
   vm: {
-    workingDays: [1, 2, 3, 4, 5],          // Mon-Fri (0 = Sunday)
+    workingDays: [1, 2, 3, 4, 5, 6],       // Mon-Sat (0 = Sunday)
+    closedSaturdaysOfMonth: [2],           // 2nd Saturday of every month closed
     slotTimes: ["10:00", "12:00", "14:00", "16:00"],
     durationMinutes: 60,
     horizonDays: 30,                       // today + 30 inclusive
@@ -80,7 +81,7 @@ export const BOOKING = Object.freeze({
 });
 ```
 
-Sundays (both) and the second Saturday of each month (callbacks; VM never runs on Saturdays) are closed by rule and are never stored as holidays. Festival holidays live in the `holidays` collection, are managed by staff from the admin Settings page (year calendar, bulk add at the start of the year, edit any time), and close a date for both VM and callbacks. Past dates and dates beyond the horizon are never bookable.
+Sundays and the second Saturday of each month (both VM and callbacks) are closed by rule and are never stored as holidays. Festival holidays live in the `holidays` collection, are managed by staff from the admin Settings page (year calendar, bulk add at the start of the year, edit any time), and close a date for both VM and callbacks. Past dates and dates beyond the horizon are never bookable.
 
 ## 5. Time handling
 

@@ -247,12 +247,29 @@ describe("POST /api/v1/vm/bookings", () => {
             assert.equal(res.body.errors.reason, reason);
         };
 
-        it("a weekend gives 422 DATE_NOT_BOOKABLE (non_working_day)", async () => {
+        it("a Sunday gives 422 DATE_NOT_BOOKABLE (non_working_day)", async () => {
             freezeTime();
 
-            expectNotBookable(await book("rahul@example.com", validBody({ date: "2026-10-17" })), "non_working_day");   // Saturday
-            expectNotBookable(await book("rahul@example.com", validBody({ date: "2026-10-18" })), "non_working_day");   // Sunday
+            expectNotBookable(await book("rahul@example.com", validBody({ date: "2026-10-18" })), "non_working_day");
             assert.equal(await slotsCount(), 0);
+        });
+
+        it("the 2nd Saturday of the month gives 422 non_working_day", async () => {
+            freezeTime("2026-11-04T05:00:00Z");
+
+            expectNotBookable(await book("rahul@example.com", validBody({ date: "2026-11-14" })), "non_working_day");
+            assert.equal(await slotsCount(), 0);
+        });
+
+        it("any other Saturday can be booked (3rd Saturday, 17 Oct 2026)", async () => {
+            freezeTime();
+
+            const res = await book("rahul@example.com", validBody({ date: "2026-10-17", time: "14:00" }));
+
+            assert.equal(res.status, 201);
+            assert.equal(res.body.data.date, "2026-10-17");
+            assert.equal(res.body.data.time, "14:00");
+            assert.equal(await slotsCount(), 1);
         });
 
         it("a holiday gives 422 with reason holiday", async () => {

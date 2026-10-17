@@ -5,7 +5,7 @@ Baseline audited in backend Stage 6.1, before release. Each item lists its statu
 Re-verify at any time:
 
 ```bash
-npm test                        # 567 tests, no network, in-memory MongoDB
+npm test                        # 573 tests, no network, in-memory MongoDB
 npm audit --omit=dev            # expect: found 0 vulnerabilities
 npm run check:concurrency       # against a local server, see README "Concurrency check"
 ```
@@ -24,7 +24,7 @@ npm run check:concurrency       # against a local server, see README "Concurrenc
 | C8 | `scripts/concurrency-check.js` (`npm run check:concurrency`) | DONE | `scripts/concurrency-check.js`, `package.json`; tests: "C8" |
 | C9 | `npm audit --omit=dev`: high and critical fixed or documented | DONE | below |
 | C10 | README and API contract match the code | DONE | `README.md`, `docs/API_CONTRACT.md`; drift list below |
-| C11 | `npm test` passes | DONE | 567 of 567 |
+| C11 | `npm test` passes | DONE | 573 of 573 |
 
 ## C1. Input validation
 
