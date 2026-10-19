@@ -1,5 +1,7 @@
 import { rateLimit, MemoryStore } from "express-rate-limit";
 import { ApiError } from "../utils/ApiError.js";
+import { ApiResponse } from "../utils/ApiRes.js";
+import { getTotal } from "../services/visits.service.js";
 import { config } from "../config/env.js";
 import { SECURITY } from "../config/security.js";
 
@@ -20,7 +22,7 @@ const rateLimitControl = {
     },
 };
 
-const createLimiter = (limit) => {
+const createLimiter = (limit, overrides = {}) => {
     const store = new MemoryStore();
     rateLimitControl.stores.push(store);
 
@@ -34,6 +36,7 @@ const createLimiter = (limit) => {
         handler: (req, res, next) => {
             next(new ApiError(429, "RATE_LIMITED", "Too many requests. Please try again later."));
         },
+        ...overrides,
     });
 };
 
@@ -47,7 +50,25 @@ const globalLimiter = createLimiter(rateLimits.globalApi);
 const otpSendLimiter = createLimiter(rateLimits.otpSend);
 const otpVerifyLimiter = createLimiter(rateLimits.otpVerify);
 
+// Visit counter: 10 / hour / IP. Over the limit the visit is not counted but the answer is still
+// 200 with the current total, so the footer never shows an error.
+const visitLimiter = createLimiter(SECURITY.visitRateLimit.limit, {
+    windowMs: SECURITY.visitRateLimit.windowMinutes * 60 * 1000,
+    standardHeaders: false,
+    handler: async (req, res, next) => {
+        try {
+            const total = await getTotal();
+            res.status(200).json(new ApiResponse(200, { total }, "Visit recorded"));
+        } catch (error) {
+            next(error);
+        }
+    },
+});
+
 // Admin login: 5 attempts / 15 min / IP
 const adminLoginLimiter = createLimiter(rateLimits.adminLogin);
 
-export { publicFormLimiter, globalLimiter, otpSendLimiter, otpVerifyLimiter, adminLoginLimiter, rateLimitControl };
+export {
+    publicFormLimiter, globalLimiter, otpSendLimiter, otpVerifyLimiter, adminLoginLimiter, visitLimiter,
+    rateLimitControl,
+};

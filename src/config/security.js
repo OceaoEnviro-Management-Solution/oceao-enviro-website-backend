@@ -46,6 +46,9 @@ export const SECURITY = Object.freeze({
         adminLogin: 5,
         globalApi: 300,
     }),
+
+    // POST /visits, per IP per hour. Over the limit it still answers 200 with the current total.
+    visitRateLimit: Object.freeze({ limit: 10, windowMinutes: 60 }),
 });
 
 /** Options for res.cookie / res.clearCookie of the admin session. Secure only in production. */

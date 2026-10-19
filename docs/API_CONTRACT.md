@@ -28,7 +28,7 @@ Every response, success or error, has an `X-Request-Id` header: a new UUID per r
 
 ### Strict input
 
-Body, query string and path parameters are validated against strict schemas. A field that is not listed for an endpoint is `400 VALIDATION_FAILED` with `errors: { "<field>": ["Unexpected field"] }`. The three admin endpoints that take no input (`POST /admin/auth/logout`, `GET /admin/auth/me`, `GET /admin/settings`) reject any key at all. A request part an endpoint does not use (such as a body on a GET) is never read. The one exception: an `email` in the `POST /vm/bookings` body is accepted and discarded. Values must have the documented type, so an object such as `{ "$gt": "" }` where a string is expected is a 400 too.
+Body, query string and path parameters are validated against strict schemas. A field that is not listed for an endpoint is `400 VALIDATION_FAILED` with `errors: { "<field>": ["Unexpected field"] }`. The endpoints that take no input (`POST /admin/auth/logout`, `GET /admin/auth/me`, `GET /admin/settings`, `POST /visits`, `GET /visits/total`) reject any key at all. A request part an endpoint does not use (such as a body on a GET) is never read. The one exception: an `email` in the `POST /vm/bookings` body is accepted and discarded. Values must have the documented type, so an object such as `{ "$gt": "" }` where a string is expected is a 400 too.
 
 ### Rate limits
 
@@ -41,6 +41,8 @@ Per IP, per 15 minutes, answered with 429 `RATE_LIMITED` and a `Retry-After` hea
 | OTP verify | 10 | `POST /vm/otp/verify` |
 | Admin login | 5 | `POST /admin/auth/login` |
 | All of `/api` | 300 | every route under `/api` |
+
+The visit counter has its own limit: `POST /visits` allows 10 per **hour** per IP, and over the limit it answers **200** with the current total (the visit is not counted) instead of 429, so the website footer never shows an error.
 
 `GET /health` is not limited.
 
@@ -170,6 +172,25 @@ Errors: VALIDATION_FAILED, CAPTCHA_FAILED, DATE_NOT_BOOKABLE (reason may be `clo
 
 ---
 
+## Public: Visit counter (`/visits`)
+
+The frontend sends one `POST /visits` per browser session and shows the total in the footer. Counters live in the `visit_stats` collection (one `total` document and one document per IST day); they start at 0 and nothing is seeded.
+
+### POST /visits
+
+No body, no query. Counts one visit (the total and today's IST day) and answers → 200 `data: { "total": 1234 }`.
+The visit is **not** counted, but the answer is still 200 with the current total, when:
+- the `User-Agent` header is missing or empty, or matches `/bot|crawl|spider|slurp|preview|headless/i`, or
+- the caller is over the limit of 10 requests per hour per IP.
+
+Errors: VALIDATION_FAILED (a body or query key was sent). It never answers RATE_LIMITED.
+
+### GET /visits/total
+
+No body, no query. → 200 `data: { "total": 1234 }` with `Cache-Control: public, max-age=60`. Errors: VALIDATION_FAILED (a query key was sent).
+
+---
+
 ## Admin auth (`/admin/auth`)
 
 Session = httpOnly cookie `oe_admin` (path `/api/v1/admin`, `SameSite=Lax`, `Secure` when `NODE_ENV=production`, 8 hours). Frontend sends `credentials: "include"`.
@@ -227,6 +248,10 @@ Max 62 days. → `{ "vmBookings": [VmBooking...], "callbackRequests": [CallbackR
 ### GET /admin/settings → `{ "callbackCapacity": { "morning": 5, "afternoon": 5, "evening": 3 } }`
 
 ### GET /admin/holidays?year=YYYY → `{ "holidays": [ { "date", "name" } ] }`
+
+### GET /admin/visits?days=30
+
+`days` is optional, a whole number from 1 to 90 (default 30); anything else is 400 `VALIDATION_FAILED`. → `{ "total": 1234, "daily": [ { "date": "2026-09-15", "count": 0 }, ... ] }`: `total` is the counter, `daily` has exactly `days` entries ending today (IST), oldest first, with `count: 0` for a day nobody visited.
 
 ---
 

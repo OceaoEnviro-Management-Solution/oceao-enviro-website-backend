@@ -10,6 +10,7 @@ import {
     handleSettings,
     handleHolidays,
 } from "../controllers/adminRead.controller.js";
+import { handleAdminVisits } from "../controllers/visits.controller.js";
 import {
     handleVmBlock,
     handleVmUnblock,
@@ -37,6 +38,7 @@ import { requireAdmin } from "../middlewares/requireAdmin.js";
 import { adminCsrf } from "../middlewares/adminCsrf.js";
 import { noInputSchema } from "../validators/common.js";
 import { loginSchema } from "../validators/adminAuth.validator.js";
+import { adminVisitsQuerySchema } from "../validators/visits.validator.js";
 import {
     dashboardQuerySchema,
     bookingsQuerySchema,
@@ -86,6 +88,7 @@ router.get("/callback/availability", validateQuery(dateQuerySchema), handleCallb
 router.get("/callback/requests", validateQuery(callbackRequestsQuerySchema), handleCallbackRequests);
 router.get("/settings", validateQuery(noInputSchema), handleSettings);
 router.get("/holidays", validateQuery(holidaysQuerySchema), handleHolidays);
+router.get("/visits", validateQuery(adminVisitsQuerySchema), handleAdminVisits);
 
 // ── VM actions (each writes one audit entry) ──────────────────────────────────
 router.post("/vm/blocks", validateBody(slotTargetSchema), handleVmBlock);
