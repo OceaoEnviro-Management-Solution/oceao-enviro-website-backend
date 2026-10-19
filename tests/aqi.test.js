@@ -584,6 +584,8 @@ describe("AQI", () => {
             const schedule = (expression, task, options) => { calls.push({ expression, task, options }); return { stop }; };
             return { calls, stop, schedule };
         };
+        // The PARIVESH job (tested in parivesh.test.js) is switched off here: never the real network.
+        const start = (options) => startJobs({ runParivesh: async () => {}, isPariveshDue: async () => false, ...options });
         const deferred = () => {
             let resolve;
             const promise = new Promise((done) => { resolve = done; });
@@ -594,11 +596,11 @@ describe("AQI", () => {
             quiet();
             const { calls, schedule } = fakeCron();
 
-            startJobs({ schedule, run: async () => {} });
+            start({ schedule, run: async () => {} });
 
-            assert.equal(calls.length, 1);
-            assert.equal(calls[0].expression, "15 * * * *");
-            assert.deepEqual(calls[0].options, { timezone: "Asia/Kolkata" });
+            const aqi = calls.filter((call) => call.expression === "15 * * * *");
+            assert.equal(aqi.length, 1);
+            assert.deepEqual(aqi[0].options, { timezone: "Asia/Kolkata" });
             assert.equal((await import("node-cron")).default.validate("15 * * * *"), true);
         });
 
@@ -607,7 +609,7 @@ describe("AQI", () => {
             const { calls, schedule } = fakeCron();
             const run = mock.fn(async () => {});
 
-            startJobs({ schedule, run });
+            start({ schedule, run });
             assert.equal(run.mock.callCount(), 1, "at start-up");
             await new Promise((done) => setImmediate(done));   // let the start-up run finish
 
@@ -622,7 +624,7 @@ describe("AQI", () => {
             const slow = deferred();
             const run = mock.fn(() => slow.promise);
 
-            startJobs({ schedule, run });          // start-up run begins and is still going
+            start({ schedule, run });          // start-up run begins and is still going
             await calls[0].task();                 // the hourly tick arrives meanwhile
             assert.equal(run.mock.callCount(), 1);
 
@@ -638,7 +640,7 @@ describe("AQI", () => {
             const { calls, schedule } = fakeCron();
             const run = mock.fn(async () => { throw new Error("database gone"); });
 
-            startJobs({ schedule, run });
+            start({ schedule, run });
             await new Promise((done) => setImmediate(done));
             await calls[0].task();
 
@@ -649,10 +651,10 @@ describe("AQI", () => {
             quiet();
             const { schedule, stop } = fakeCron();
 
-            const stopJobs = startJobs({ schedule, run: async () => {} });
+            const stopJobs = start({ schedule, run: async () => {} });
             stopJobs();
 
-            assert.equal(stop.mock.callCount(), 1);
+            assert.equal(stop.mock.callCount(), 2, "the AQI and the PARIVESH schedule");
         });
 
         it("only src/index.js starts the jobs, so tests (which load app.js) never schedule anything", async () => {

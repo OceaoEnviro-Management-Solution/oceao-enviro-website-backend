@@ -28,7 +28,7 @@ Every response, success or error, has an `X-Request-Id` header: a new UUID per r
 
 ### Strict input
 
-Body, query string and path parameters are validated against strict schemas. A field that is not listed for an endpoint is `400 VALIDATION_FAILED` with `errors: { "<field>": ["Unexpected field"] }`. The endpoints that take no input (`POST /admin/auth/logout`, `GET /admin/auth/me`, `GET /admin/settings`, `POST /visits`, `GET /visits/total`, `GET /aqi`) reject any key at all. A request part an endpoint does not use (such as a body on a GET) is never read. The one exception: an `email` in the `POST /vm/bookings` body is accepted and discarded. Values must have the documented type, so an object such as `{ "$gt": "" }` where a string is expected is a 400 too.
+Body, query string and path parameters are validated against strict schemas. A field that is not listed for an endpoint is `400 VALIDATION_FAILED` with `errors: { "<field>": ["Unexpected field"] }`. The endpoints that take no input (`POST /admin/auth/logout`, `GET /admin/auth/me`, `GET /admin/settings`, `POST /visits`, `GET /visits/total`, `GET /aqi`, `GET /updates/latest`, `GET /admin/updates/sync-status`, `POST /admin/updates/sync`) reject any key at all. A request part an endpoint does not use (such as a body on a GET) is never read. The one exception: an `email` in the `POST /vm/bookings` body is accepted and discarded. Values must have the documented type, so an object such as `{ "$gt": "" }` where a string is expected is a 400 too.
 
 ### Rate limits
 
@@ -43,6 +43,8 @@ Per IP, per 15 minutes, answered with 429 `RATE_LIMITED` and a `Retry-After` hea
 | All of `/api` | 300 | every route under `/api` |
 
 The visit counter has its own limit: `POST /visits` allows 10 per **hour** per IP, and over the limit it answers **200** with the current total (the visit is not counted) instead of 429, so the website footer never shows an error.
+
+`POST /admin/updates/sync` has its own limit: **1 per 5 minutes in total** (not per IP), answered with 429 `RATE_LIMITED` and `Retry-After`.
 
 `GET /health` is not limited.
 
@@ -80,6 +82,7 @@ The visit counter has its own limit: `POST /visits` allows 10 per **hour** per I
 | OTP_SEND_LIMIT | 429 | 5 sends/hour reached, `errors.retryAfterSec` |
 | OTP_LOCKED | 429 | 5 wrong attempts; request a new code |
 | EMAIL_SEND_FAILED | 502 | OTP email could not be sent |
+| PARIVESH_SYNC_FAILED | 502 | admin "sync now": PARIVESH could not be read or sent nothing usable; nothing was changed |
 | MEET_CREATE_FAILED | 502 | Google failed on admin retry |
 | BAD_REQUEST | 4xx | a client error raised by the framework that has no code of its own (for example an unsupported body charset) |
 | INTERNAL_ERROR | 500 | anything else; in production every 5xx |
@@ -217,6 +220,35 @@ Errors: VALIDATION_FAILED (a query key was sent).
 
 ---
 
+## Public: Updates (`/updates`)
+
+PARIVESH "What's New" (the Ministry's orders and notifications). A background job copies the list from `https://parivesh.nic.in/ua/parivesh/StatePortal/GetStatePortalData/ALL/` into the `parivesh_updates` collection at minute 5 of every 6th hour (IST: 00:05, 06:05, 12:05, 18:05), and at server start when the last good sync is more than 6 hours old. These requests never call PARIVESH: they only read what the job stored. The sync only adds and updates, it never deletes; items the source marks unpublished are stored but never listed.
+
+- `title`: the file name without `.pdf`. `category`: the source's document title.
+- Items whose document is not on PARIVESH's own server (no `/publicdocument/` in the path, for example links to other sites) are not synced.
+- `pdfUrl` is always on `https://parivesh.nic.in/publicdocument/...`, URL-encoded. The source's server path is never returned.
+
+An item (both endpoints):
+```json
+{ "id": 6090, "title": "Order- Reconstitution of EAC (Thermal & Coal Mining)", "category": "Thermal Power & Coal Mining",
+  "date": "2026-10-19", "sizeLabel": "4.08 MB",
+  "pdfUrl": "https://parivesh.nic.in/publicdocument/UPLOAD_OM_NOTIFICATION/IA_DOCS/1003_19102026110658.pdf", "isNew": true }
+```
+- `id`: PARIVESH's own id. `date`: the order date as an IST `YYYY-MM-DD`, `null` when the source has none. `sizeLabel`: as the source writes it ("190.87 KB"), `null` when missing.
+- `isNew`: uploaded to PARIVESH within the last 14 days.
+- Newest upload first (ties by `id`, descending). Both endpoints send `Cache-Control: public, max-age=600`.
+
+### GET /updates/latest
+
+No body, no query. → 200 `data: { "items": [ ...the 5 newest published items ] }` (fewer, or none, before there are that many). Errors: VALIDATION_FAILED (a query key was sent).
+
+### GET /updates?page=1
+
+`page` is optional, a whole number from 1 to 99999 (default 1); anything else is 400 `VALIDATION_FAILED`, as is any other query key.
+→ 200 `data: { "items": [ ... up to 10 ], "page": 1, "pageSize": 10, "total": 489, "totalPages": 49 }`. `total` counts published items. A page past the last one answers 200 with `items: []` and the same totals; with nothing synced yet `total` and `totalPages` are 0.
+
+---
+
 ## Admin auth (`/admin/auth`)
 
 Session = httpOnly cookie `oe_admin` (path `/api/v1/admin`, `SameSite=Lax`, `Secure` when `NODE_ENV=production`, 8 hours). Frontend sends `credentials: "include"`.
@@ -278,6 +310,16 @@ Max 62 days. → `{ "vmBookings": [VmBooking...], "callbackRequests": [CallbackR
 ### GET /admin/visits?days=30
 
 `days` is optional, a whole number from 1 to 90 (default 30); anything else is 400 `VALIDATION_FAILED`. → `{ "total": 1234, "daily": [ { "date": "2026-09-15", "count": 0 }, ... ] }`: `total` is the counter, `daily` has exactly `days` entries ending today (IST), oldest first, with `count: 0` for a day nobody visited.
+
+### GET /admin/updates/sync-status
+
+No query. → `{ "lastSuccessAt": "2026-10-19T10:00:00.000Z", "lastAttemptAt": "2026-10-19T16:30:00.000Z", "lastError": null, "itemsReceived": 489, "itemsSkipped": 159 }`.
+`lastSuccessAt` / `lastAttemptAt`: ISO times, `null` before the first sync. `lastError`: a short text (never a URL or stack) when the last attempt failed, `null` after a good sync. `itemsReceived` / `itemsSkipped` are those of the last **successful** sync (skipped = no `/publicdocument/` path, or an item the source sent unusable). A failed attempt changes `lastAttemptAt` and `lastError` only. All five are `null` before the first sync.
+
+### POST /admin/updates/sync
+
+No body, no query (any key is 400 `VALIDATION_FAILED`). Runs a sync now (the same as the scheduled one; if one is already running it waits for that one) → 200 `{ "received": 489, "saved": 330, "inserted": 5, "updated": 1, "skipped": 159 }`: `saved` = items written (new or already stored), `inserted` = new, `updated` = existing items that changed.
+If PARIVESH cannot be read or sends nothing usable → 502 `PARIVESH_SYNC_FAILED` (nothing is changed, the failure shows in sync-status). Limited to **one per 5 minutes in total**: otherwise 429 `RATE_LIMITED` with `Retry-After`. Needs a session and the usual admin write checks.
 
 ---
 

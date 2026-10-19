@@ -66,6 +66,7 @@ describe("Security baseline", () => {
             admin: (await import("../src/routes/admin.route.js")).adminRouter,
             visits: (await import("../src/routes/visits.route.js")).visitsRouter,
             aqi: (await import("../src/routes/aqi.route.js")).aqiRouter,
+            updates: (await import("../src/routes/updates.route.js")).updatesRouter,
         };
     });
     after(stopTestEnv);

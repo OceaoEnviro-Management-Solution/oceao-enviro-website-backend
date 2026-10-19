@@ -12,7 +12,8 @@
     "admin:hash": "node scripts/hash-password.js",
     "seed:demo": "node scripts/seed-demo.js",
     "check:concurrency": "node scripts/concurrency-check.js",
-    "aqi:probe": "node scripts/aqi-probe.js"
+    "aqi:probe": "node scripts/aqi-probe.js",
+    "parivesh:sync": "node scripts/parivesh-sync.js"
   },
   "author": "Mohit Ranjan",
   "license": "ISC",

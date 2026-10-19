@@ -4,6 +4,7 @@ import { ApiResponse } from "../utils/ApiRes.js";
 import { getTotal } from "../services/visits.service.js";
 import { config } from "../config/env.js";
 import { SECURITY } from "../config/security.js";
+import { PARIVESH } from "../config/parivesh.js";
 
 const { rateLimits } = SECURITY;
 const FIFTEEN_MINUTES = rateLimits.windowMinutes * 60 * 1000;
@@ -68,7 +69,21 @@ const visitLimiter = createLimiter(SECURITY.visitRateLimit.limit, {
 // Admin login: 5 attempts / 15 min / IP
 const adminLoginLimiter = createLimiter(rateLimits.adminLogin);
 
+// Admin "sync PARIVESH now": one run per 5 minutes in total (one shared admin account, and the
+// source should not be hammered), so every request shares one counter instead of one per IP.
+const adminSyncLimiter = createLimiter(1, {
+    windowMs: PARIVESH.manualSyncCooldownMinutes * 60 * 1000,
+    keyGenerator: () => "parivesh-sync",
+    handler: (req, res, next) => {
+        next(new ApiError(
+            429,
+            "RATE_LIMITED",
+            `A sync was started less than ${PARIVESH.manualSyncCooldownMinutes} minutes ago. Please try again later.`
+        ));
+    },
+});
+
 export {
     publicFormLimiter, globalLimiter, otpSendLimiter, otpVerifyLimiter, adminLoginLimiter, visitLimiter,
-    rateLimitControl,
+    adminSyncLimiter, rateLimitControl,
 };

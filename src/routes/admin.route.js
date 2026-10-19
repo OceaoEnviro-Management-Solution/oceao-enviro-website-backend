@@ -11,6 +11,7 @@ import {
     handleHolidays,
 } from "../controllers/adminRead.controller.js";
 import { handleAdminVisits } from "../controllers/visits.controller.js";
+import { handleSyncStatus, handleSyncNow } from "../controllers/updates.controller.js";
 import {
     handleVmBlock,
     handleVmUnblock,
@@ -33,7 +34,7 @@ import {
 import { validateBody } from "../middlewares/validateBody.middleware.js";
 import { validateQuery } from "../middlewares/validateQuery.middleware.js";
 import { validateParams } from "../middlewares/validateParams.middleware.js";
-import { adminLoginLimiter } from "../middlewares/rateLimit.js";
+import { adminLoginLimiter, adminSyncLimiter } from "../middlewares/rateLimit.js";
 import { requireAdmin } from "../middlewares/requireAdmin.js";
 import { adminCsrf } from "../middlewares/adminCsrf.js";
 import { noInputSchema } from "../validators/common.js";
@@ -89,6 +90,10 @@ router.get("/callback/requests", validateQuery(callbackRequestsQuerySchema), han
 router.get("/settings", validateQuery(noInputSchema), handleSettings);
 router.get("/holidays", validateQuery(holidaysQuerySchema), handleHolidays);
 router.get("/visits", validateQuery(adminVisitsQuerySchema), handleAdminVisits);
+router.get("/updates/sync-status", validateQuery(noInputSchema), handleSyncStatus);
+
+// ── PARIVESH updates: sync now (no input; one per 5 minutes) ──────────────────
+router.post("/updates/sync", validateBody(noInputSchema), adminSyncLimiter, handleSyncNow);
 
 // ── VM actions (each writes one audit entry) ──────────────────────────────────
 router.post("/vm/blocks", validateBody(slotTargetSchema), handleVmBlock);
