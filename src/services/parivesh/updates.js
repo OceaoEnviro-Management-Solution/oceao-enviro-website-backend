@@ -1,4 +1,5 @@
-// What the website shows of the synced PARIVESH items: published ones only, newest upload first.
+// What the website shows of the synced PARIVESH items: published ones only, newest order date first
+// (the date each item is shown with), so the list reads in date order from top to bottom.
 // The stored document is turned into the public item here, so nothing else (no documentPath, no
 // firstSeenAt) can leak out of the API.
 
@@ -8,8 +9,9 @@ import { nowIST } from "../../utils/time.js";
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
-// Same upload time, same order every time, so a page never repeats or skips an item.
-const NEWEST_FIRST = { uploadedOn: -1, pariveshId: -1 };
+// Newest order date first; items without one come last. Same date: the later upload first, then the
+// higher id, so the order is the same every time and a page never repeats or skips an item.
+const NEWEST_FIRST = { orderDate: -1, uploadedOn: -1, pariveshId: -1 };
 
 /** @returns {{ id: number, title: string, category: string, date: string|null, sizeLabel: string|null, pdfUrl: string, isNew: boolean }} */
 export const toPublicItem = (document, now = new Date()) => ({

@@ -3,8 +3,8 @@ import mongoose, { Schema } from "mongoose";
 // One PARIVESH "What's New" document (services/parivesh/sync.js upserts them by pariveshId).
 //   title        the file name without its .pdf
 //   category     the source's documentTitle
-//   orderDate    the date of the order itself (can be missing in the source)
-//   uploadedOn   when PARIVESH published it: decides the order and "new"
+//   orderDate    the date of the order itself (can be missing in the source): the list is newest first by this
+//   uploadedOn   when PARIVESH published it: decides "new", and the order of items with the same orderDate
 //   pdfUrl       the public link, built from the source's documentPath (which is not stored)
 //   published    false = stored but never shown
 //   firstSeenAt  when this server first saw it (set once, on insert)
@@ -30,6 +30,6 @@ const pariveshUpdateSchema = new Schema({
 });
 
 pariveshUpdateSchema.index({ pariveshId: 1 }, { unique: true });
-pariveshUpdateSchema.index({ published: 1, uploadedOn: -1 });
+pariveshUpdateSchema.index({ published: 1, orderDate: -1, uploadedOn: -1 });
 
 export const PariveshUpdate = mongoose.model("PariveshUpdate", pariveshUpdateSchema);

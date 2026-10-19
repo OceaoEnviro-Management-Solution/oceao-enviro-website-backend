@@ -236,11 +236,11 @@ An item (both endpoints):
 ```
 - `id`: PARIVESH's own id. `date`: the order date as an IST `YYYY-MM-DD`, `null` when the source has none. `sizeLabel`: as the source writes it ("190.87 KB"), `null` when missing.
 - `isNew`: uploaded to PARIVESH within the last 14 days.
-- Newest upload first (ties by `id`, descending). Both endpoints send `Cache-Control: public, max-age=600`.
+- Newest `date` (the order date) first, so the list reads in date order from top to bottom. Items without a date come last. Items with the same date: the later upload first, then the higher `id`. Both endpoints send `Cache-Control: public, max-age=600`.
 
 ### GET /updates/latest
 
-No body, no query. → 200 `data: { "items": [ ...the 5 newest published items ] }` (fewer, or none, before there are that many). Errors: VALIDATION_FAILED (a query key was sent).
+No body, no query. → 200 `data: { "items": [ ...the 5 published items with the newest date ] }` (fewer, or none, before there are that many). Errors: VALIDATION_FAILED (a query key was sent).
 
 ### GET /updates?page=1
 

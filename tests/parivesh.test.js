@@ -409,7 +409,7 @@ describe("PARIVESH updates", () => {
     describe("GET /api/v1/updates/latest", () => {
         const latest = () => request(getApp()).get("/api/v1/updates/latest");
 
-        it("is the 5 newest published items by upload time, newest first, in the documented shape", async () => {
+        it("is the 5 newest published items (same date: later upload first), in the documented shape", async () => {
             await seed([9, 1, 5, 3, 7, 2, 30]);
 
             const res = await latest();
@@ -543,6 +543,85 @@ describe("PARIVESH updates", () => {
 
         it("is cacheable for 10 minutes", async () => {
             assert.equal((await page()).headers["cache-control"], "public, max-age=600");
+        });
+    });
+
+    describe("the order: newest date first", () => {
+        // orderDate is the date each item is shown with; uploadedOn is when PARIVESH published it.
+        const doc = (id, orderDate, uploadedOn, overrides = {}) => ({
+            pariveshId: id, title: `Item ${id}`, category: "c", orderDate: orderDate ? new Date(`${orderDate}T00:00:00Z`) : null,
+            uploadedOn: new Date(`${uploadedOn}T06:00:00Z`), sizeLabel: null, pdfUrl: `https://parivesh.nic.in/publicdocument/${id}.pdf`,
+            published: true, firstSeenAt: new Date(), ...overrides,
+        });
+        const dates = (res) => res.body.data.items.map((entry) => entry.date);
+        const ids = (res) => res.body.data.items.map((entry) => entry.id);
+        const latest = () => request(getApp()).get("/api/v1/updates/latest");
+        const list = (query = "") => request(getApp()).get(`/api/v1/updates${query}`);
+
+        it("an order with an old date uploaded recently is listed by its date, not by when it was uploaded", async () => {
+            // the real case: an order dated 2023, uploaded in October 2026
+            await PariveshUpdate.insertMany([
+                doc(1, "2026-10-19", "2026-10-19"),
+                doc(2, "2026-10-14", "2026-10-14"),
+                doc(3, "2023-10-13", "2026-10-11"),
+                doc(4, "2026-10-06", "2026-10-06"),
+                doc(5, "2026-09-29", "2026-10-09"),
+            ]);
+
+            const res = await latest();
+
+            assert.deepEqual(dates(res), ["2026-10-19", "2026-10-14", "2026-10-06", "2026-09-29", "2023-10-13"]);
+            assert.deepEqual(ids(res), [1, 2, 4, 5, 3]);
+        });
+
+        it("the whole list, page after page, never shows a newer date below an older one", async () => {
+            const days = [19, 3, 27, 8, 14, 1, 22, 11, 30, 5, 17, 9, 25, 2, 13, 28, 6, 20, 12, 24, 4, 16, 10, 26, 7];
+            await PariveshUpdate.insertMany(days.map((day, index) => doc(100 + index, `2026-09-${String(day).padStart(2, "0")}`, "2026-10-01")));
+
+            const all = [];
+            for (const page of [1, 2, 3]) all.push(...dates(await list(`?page=${page}`)));
+
+            assert.equal(all.length, 25);
+            assert.deepEqual(all, [...all].sort().reverse());
+        });
+
+        it("items with no date come last, after every dated item", async () => {
+            await PariveshUpdate.insertMany([
+                doc(1, null, "2026-10-19"),
+                doc(2, "2026-01-05", "2026-01-05"),
+                doc(3, null, "2026-10-18"),
+                doc(4, "2022-02-02", "2022-02-02"),
+            ]);
+
+            const res = await latest();
+
+            assert.deepEqual(ids(res), [2, 4, 1, 3]);   // dated newest first, then the undated, later upload first
+            assert.deepEqual(dates(res), ["2026-01-05", "2022-02-02", null, null]);
+        });
+
+        it("the same date: the later upload first, then the higher id", async () => {
+            await PariveshUpdate.insertMany([
+                doc(1, "2026-10-10", "2026-10-10"),
+                doc(2, "2026-10-10", "2026-10-12"),
+                doc(3, "2026-10-10", "2026-10-12"),
+                doc(4, "2026-10-11", "2026-10-01"),
+            ]);
+
+            assert.deepEqual(ids(await latest()), [4, 3, 2, 1]);
+        });
+
+        it("the page list and the latest list agree", async () => {
+            await PariveshUpdate.insertMany([doc(1, "2026-10-01", "2026-10-30"), doc(2, "2026-10-20", "2026-10-02"), doc(3, "2026-10-10", "2026-10-15")]);
+
+            assert.deepEqual(ids(await list()), ids(await latest()));
+            assert.deepEqual(ids(await list()), [2, 3, 1]);
+        });
+
+        it("the index serves this order", async () => {
+            await PariveshUpdate.init();
+            const keys = (await PariveshUpdate.collection.indexes()).map((index) => JSON.stringify(index.key));
+
+            assert.ok(keys.includes(JSON.stringify({ published: 1, orderDate: -1, uploadedOn: -1 })), keys.join(" "));
         });
     });
 
