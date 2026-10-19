@@ -49,6 +49,12 @@ const envSchema = z
         // data.gov.in API key: the hourly CPCB air quality job (services/aqi/fetch.js)
         DATA_GOV_API_KEY: required(),
 
+        // Cloudinary account that stores the homepage hero images (services/cloudinary.service.js).
+        // The API secret is a secret: it is never logged or sent to the browser.
+        CLOUDINARY_CLOUD_NAME: required(),
+        CLOUDINARY_API_KEY: required(),
+        CLOUDINARY_API_SECRET: required(),
+
         // Optional until the stage that uses them
         GOOGLE_CLIENT_ID: optional(),
         GOOGLE_CLIENT_SECRET: optional(),

@@ -28,7 +28,7 @@ Every response, success or error, has an `X-Request-Id` header: a new UUID per r
 
 ### Strict input
 
-Body, query string and path parameters are validated against strict schemas. A field that is not listed for an endpoint is `400 VALIDATION_FAILED` with `errors: { "<field>": ["Unexpected field"] }`. The endpoints that take no input (`POST /admin/auth/logout`, `GET /admin/auth/me`, `GET /admin/settings`, `POST /visits`, `GET /visits/total`, `GET /aqi`, `GET /updates/latest`, `GET /admin/updates/sync-status`, `POST /admin/updates/sync`) reject any key at all. A request part an endpoint does not use (such as a body on a GET) is never read. The one exception: an `email` in the `POST /vm/bookings` body is accepted and discarded. Values must have the documented type, so an object such as `{ "$gt": "" }` where a string is expected is a 400 too.
+Body, query string and path parameters are validated against strict schemas. A field that is not listed for an endpoint is `400 VALIDATION_FAILED` with `errors: { "<field>": ["Unexpected field"] }`. The endpoints that take no input (`POST /admin/auth/logout`, `GET /admin/auth/me`, `GET /admin/settings`, `POST /visits`, `GET /visits/total`, `GET /aqi`, `GET /hero`, `GET /updates/latest`, `GET /admin/updates/sync-status`, `POST /admin/updates/sync`) reject any key at all. A request part an endpoint does not use (such as a body on a GET) is never read. The one exception: an `email` in the `POST /vm/bookings` body is accepted and discarded. Values must have the documented type, so an object such as `{ "$gt": "" }` where a string is expected is a 400 too.
 
 ### Rate limits
 
@@ -246,6 +246,30 @@ No body, no query. → 200 `data: { "items": [ ...the 5 published items with the
 
 `page` is optional, a whole number from 1 to 99999 (default 1); anything else is 400 `VALIDATION_FAILED`, as is any other query key.
 → 200 `data: { "items": [ ... up to 10 ], "page": 1, "pageSize": 10, "total": 489, "totalPages": 49 }`. `total` counts published items. A page past the last one answers 200 with `items: []` and the same totals; with nothing synced yet `total` and `totalPages` are 0.
+
+---
+
+## Public: Homepage hero (`/hero`)
+
+The slides of the homepage hero. Two sets of slides exist in the `hero_slides` collection: `live` (shown now) and `scheduled` (the next set). The day of the switch is `heroSwitchDate` (an IST date) in the settings document. There is no timer: **the first `GET /hero` on or after that day does the switch** — the scheduled slides become live (same order), the old live slides are deleted from the database and their pictures from Cloudinary, and the date is cleared. With no scheduled slides on that day the date is just cleared and the live slides stay. Two requests at the same moment switch once.
+
+### GET /hero
+
+No body, no query (any key is 400 `VALIDATION_FAILED`). → 200
+```json
+{ "slides": [
+  { "id": "6720f1c2a9b3c4d5e6f70812", "imageUrl": "https://res.cloudinary.com/<cloud>/image/upload/f_auto,q_auto,w_1920,c_limit/oceao/hero/abc123",
+    "name": "Rohtang Pass", "location": "Himachal Pradesh", "description": "Early snow on the pass.", "credit": "Photo: A. Kumar" }
+] }
+```
+- Live slides only, by `order` (ascending). `[]` when there are none.
+- `credit` is left out when the slide has none.
+- `imageUrl` is an HTTPS link that serves the best format and quality at most 1920 px wide; it is not the original file.
+- Length limits (for the admin stage): `name` and `location` 2-80, `description` up to 120, `credit` up to 80.
+- A switch that fails is logged and does not fail the request: the slides that exist are returned, and the switch is tried again on the next request.
+- `Cache-Control: public, max-age=300`; after a failed switch `no-store`, because that answer may be incomplete.
+
+Errors: VALIDATION_FAILED (a query key was sent).
 
 ---
 

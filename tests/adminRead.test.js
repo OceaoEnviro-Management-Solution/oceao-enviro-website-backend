@@ -782,6 +782,9 @@ describe("Admin read endpoints", () => {
                     BOOKING_TOKEN_SECRET: TEST_BOOKING_TOKEN_SECRET,
                     TURNSTILE_SECRET_KEY: "1x0000000000000000000000000000000AA",
                     DATA_GOV_API_KEY: "test-data-gov-api-key",
+                    CLOUDINARY_CLOUD_NAME: "test-cloud",
+                    CLOUDINARY_API_KEY: "test-cloudinary-key",
+                    CLOUDINARY_API_SECRET: "test-cloudinary-secret-0123456789",
                     // would make real calendar events if the script did not remove them
                     GOOGLE_CLIENT_ID: "client-id.apps.googleusercontent.com",
                     GOOGLE_CLIENT_SECRET: "client-secret",

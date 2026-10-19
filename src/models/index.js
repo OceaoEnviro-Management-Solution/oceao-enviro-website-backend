@@ -12,6 +12,7 @@ import { VisitStat } from "./visitStat.model.js";
 import { AqiReading } from "./aqiReading.model.js";
 import { PariveshUpdate } from "./pariveshUpdate.model.js";
 import { SyncStatus } from "./syncStatus.model.js";
+import { HeroSlide } from "./heroSlide.model.js";
 
 export const models = Object.freeze({
     VmSlot,
@@ -26,6 +27,7 @@ export const models = Object.freeze({
     AqiReading,
     PariveshUpdate,
     SyncStatus,
+    HeroSlide,
 });
 
 /**
@@ -34,4 +36,4 @@ export const models = Object.freeze({
  */
 export const initModels = () => Promise.all(Object.values(models).map((model) => model.init()));
 
-export { VmSlot, VmBooking, CallbackBucket, CallbackRequest, OtpChallenge, Holiday, Settings, AuditLog, VisitStat, AqiReading, PariveshUpdate, SyncStatus };
+export { VmSlot, VmBooking, CallbackBucket, CallbackRequest, OtpChallenge, Holiday, Settings, AuditLog, VisitStat, AqiReading, PariveshUpdate, SyncStatus, HeroSlide };
