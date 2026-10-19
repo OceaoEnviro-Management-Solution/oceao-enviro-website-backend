@@ -64,6 +64,8 @@ describe("Security baseline", () => {
             vm: (await import("../src/routes/vm.route.js")).vmRouter,
             callback: (await import("../src/routes/callback.route.js")).callbackRouter,
             admin: (await import("../src/routes/admin.route.js")).adminRouter,
+            visits: (await import("../src/routes/visits.route.js")).visitsRouter,
+            aqi: (await import("../src/routes/aqi.route.js")).aqiRouter,
         };
     });
     after(stopTestEnv);
@@ -669,6 +671,7 @@ function childEnv(extra = {}) {
         OTP_SECRET: TEST_OTP_SECRET,
         BOOKING_TOKEN_SECRET: TEST_BOOKING_TOKEN_SECRET,
         TURNSTILE_SECRET_KEY: "1x0000000000000000000000000000000AA",
+        DATA_GOV_API_KEY: "test-data-gov-api-key",
         ...TEST_ADMIN_ENV,
         ...extra,
     };

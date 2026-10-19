@@ -5,6 +5,7 @@ import connectDB, { disconnectDB } from "./db/index.js"
 import { app } from "./app.js"
 import { emailConnectionVerify } from "./services/email/email.connections.js"
 import { meetBootWarning } from "./services/googleCalendar.service.js"
+import { startJobs } from "./jobs/scheduler.js"
 import { logger } from "./utils/logger.js"
 
 const SHUTDOWN_TIMEOUT_MS = 10000;
@@ -16,6 +17,9 @@ const start = async () => {
         logger.error("MongoDB connection failed", error);
         process.exit(1);
     }
+
+    // Background jobs start only once the database is up (never in tests, which do not load this file).
+    const stopJobs = startJobs();
 
     const meetWarning = meetBootWarning();
     if (meetWarning) {
@@ -39,6 +43,7 @@ const start = async () => {
         if (shuttingDown) return;
         shuttingDown = true;
         logger.info(`${signal} received, shutting down`);
+        stopJobs();
 
         setTimeout(() => {
             logger.error("Shutdown timed out, forcing exit");

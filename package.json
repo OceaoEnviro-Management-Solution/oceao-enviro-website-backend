@@ -11,7 +11,8 @@
     "google:auth": "node scripts/google-auth.js",
     "admin:hash": "node scripts/hash-password.js",
     "seed:demo": "node scripts/seed-demo.js",
-    "check:concurrency": "node scripts/concurrency-check.js"
+    "check:concurrency": "node scripts/concurrency-check.js",
+    "aqi:probe": "node scripts/aqi-probe.js"
   },
   "author": "Mohit Ranjan",
   "license": "ISC",
@@ -35,6 +36,7 @@
     "jsonwebtoken": "^9.0.3",
     "mongoose": "^9.9.4",
     "multer": "^2.3.0",
+    "node-cron": "^4.6.0",
     "nodemailer": "^10.0.0",
     "zod": "^4.5.4"
   }

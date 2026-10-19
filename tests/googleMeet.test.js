@@ -507,6 +507,7 @@ describe("Google Meet", () => {
                         OTP_SECRET: TEST_OTP_SECRET,
                         BOOKING_TOKEN_SECRET: TEST_BOOKING_TOKEN_SECRET,
                         TURNSTILE_SECRET_KEY: "1x0000000000000000000000000000000AA",
+                        DATA_GOV_API_KEY: "test-data-gov-api-key",
                         ...TEST_ADMIN_ENV,
                         GOOGLE_CLIENT_ID: "client-id-123.apps.googleusercontent.com",
                         GOOGLE_CLIENT_SECRET: "client-secret-456",

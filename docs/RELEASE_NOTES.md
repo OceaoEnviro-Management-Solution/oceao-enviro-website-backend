@@ -53,6 +53,7 @@ Set these in the host's environment. The server refuses to start until the requi
 | `OTP_SECRET` | random, 32+ characters | yes | Different from the other secrets. |
 | `BOOKING_TOKEN_SECRET` | random, 32+ characters | yes | |
 | `TURNSTILE_SECRET_KEY` | the real secret from Cloudflare | yes | The test key `1x0000000000000000000000000000000AA` always passes and must not be used. |
+| `DATA_GOV_API_KEY` | your data.gov.in API key | yes | For the hourly CPCB air quality job. The server will not start without it. |
 | `ADMIN_EMAIL` | admin login email | yes | |
 | `ADMIN_PASSWORD_HASH` | output of `npm run admin:hash` | yes | A bcrypt hash; anything else is refused at start. |
 | `ADMIN_JWT_SECRET` | random, 32+ characters | yes | |

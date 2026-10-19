@@ -28,7 +28,7 @@ Every response, success or error, has an `X-Request-Id` header: a new UUID per r
 
 ### Strict input
 
-Body, query string and path parameters are validated against strict schemas. A field that is not listed for an endpoint is `400 VALIDATION_FAILED` with `errors: { "<field>": ["Unexpected field"] }`. The endpoints that take no input (`POST /admin/auth/logout`, `GET /admin/auth/me`, `GET /admin/settings`, `POST /visits`, `GET /visits/total`) reject any key at all. A request part an endpoint does not use (such as a body on a GET) is never read. The one exception: an `email` in the `POST /vm/bookings` body is accepted and discarded. Values must have the documented type, so an object such as `{ "$gt": "" }` where a string is expected is a 400 too.
+Body, query string and path parameters are validated against strict schemas. A field that is not listed for an endpoint is `400 VALIDATION_FAILED` with `errors: { "<field>": ["Unexpected field"] }`. The endpoints that take no input (`POST /admin/auth/logout`, `GET /admin/auth/me`, `GET /admin/settings`, `POST /visits`, `GET /visits/total`, `GET /aqi`) reject any key at all. A request part an endpoint does not use (such as a body on a GET) is never read. The one exception: an `email` in the `POST /vm/bookings` body is accepted and discarded. Values must have the documented type, so an object such as `{ "$gt": "" }` where a string is expected is a 400 too.
 
 ### Rate limits
 
@@ -188,6 +188,32 @@ Errors: VALIDATION_FAILED (a body or query key was sent). It never answers RATE_
 ### GET /visits/total
 
 No body, no query. → 200 `data: { "total": 1234 }` with `Cache-Control: public, max-age=60`. Errors: VALIDATION_FAILED (a query key was sent).
+
+---
+
+## Public: Air quality (`/aqi`)
+
+The latest AQI of four CPCB stations (Delhi: Chandni Chowk, Ghaziabad: Vasundhara, Chandigarh: Sector 22, Gurugram: Vikas Sadan). A background job reads them from data.gov.in (CPCB "Real time Air Quality Index") at minute 15 of every hour (IST) and once at server start, and keeps one document per station in the `aqi_readings` collection. The request never calls data.gov.in: it only reads what the job stored.
+
+How the number is made: the source publishes each pollutant as a CPCB sub-index (0-500), already calculated from the 24 hour average (8 hour for CO and ozone), not as a concentration. The station `aqi` is the **highest sub-index** of PM2.5, PM10, NO2, O3, CO, SO2 and NH3. It is `null` when fewer than 3 of those pollutants are known, or when neither PM2.5 nor PM10 is. A station that cannot be read keeps its previous reading until the next successful run.
+
+### GET /aqi
+
+No body, no query. → 200
+```json
+{ "stations": [
+  { "city": "Delhi", "station": "Chandni Chowk, Delhi - IITM", "aqi": 201, "category": "Poor",
+    "sourceLastUpdate": "2026-10-19T17:30:00.000Z", "stale": false }
+] }
+```
+- Always the four stations, in this order: Delhi, Ghaziabad, Chandigarh, Gurugram.
+- `category`: `Good` (0-50), `Satisfactory` (51-100), `Moderate` (101-200), `Poor` (201-300), `Very Poor` (301-400) or `Severe` (401-500).
+- `aqi` and `category` are `null` when there is no AQI (see above), or before the first successful run.
+- `sourceLastUpdate`: when CPCB measured it (ISO, UTC); `null` before the first successful run.
+- `stale`: `true` when `sourceLastUpdate` is more than 3 hours old, or is `null`.
+- Header `Cache-Control: public, max-age=300`.
+
+Errors: VALIDATION_FAILED (a query key was sent).
 
 ---
 

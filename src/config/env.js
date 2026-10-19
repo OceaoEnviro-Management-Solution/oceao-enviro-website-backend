@@ -46,6 +46,9 @@ const envSchema = z
         // Cloudflare Turnstile secret (local test key: 1x0000000000000000000000000000000AA)
         TURNSTILE_SECRET_KEY: required(),
 
+        // data.gov.in API key: the hourly CPCB air quality job (services/aqi/fetch.js)
+        DATA_GOV_API_KEY: required(),
+
         // Optional until the stage that uses them
         GOOGLE_CLIENT_ID: optional(),
         GOOGLE_CLIENT_SECRET: optional(),

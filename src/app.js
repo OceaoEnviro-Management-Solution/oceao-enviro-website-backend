@@ -14,6 +14,7 @@ import { vmRouter } from "./routes/vm.route.js"
 import { callbackRouter } from "./routes/callback.route.js"
 import { adminRouter } from "./routes/admin.route.js"
 import { visitsRouter } from "./routes/visits.route.js"
+import { aqiRouter } from "./routes/aqi.route.js"
 
 const app = express();
 
@@ -58,6 +59,7 @@ app.use("/api/v1/feedback", feedbackRouter)
 app.use("/api/v1/vm", vmRouter)
 app.use("/api/v1/callback", callbackRouter)
 app.use("/api/v1/visits", visitsRouter)
+app.use("/api/v1/aqi", aqiRouter)
 app.use("/api/v1/admin", adminRouter)
 
 app.use(notFoundHandler);
