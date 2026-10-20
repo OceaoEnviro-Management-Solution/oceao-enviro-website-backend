@@ -201,7 +201,7 @@ describe("Admin hero", () => {
             assert.equal(res.body.data.scheduled.switchDate, "2999-01-01");
             const first = res.body.data.live[0];
             assert.deepEqual(Object.keys(first).sort(), [
-                "createdAt", "credit", "description", "height", "id", "imageUrl", "location", "name", "order", "publicId", "set", "updatedAt", "url", "width",
+                "createdAt", "credit", "description", "height", "id", "imageUrl", "location", "name", "order", "publicId", "set", "textStyle", "updatedAt", "url", "width",
             ]);
             assert.equal(first.publicId, "oceao/hero/live-0");
             assert.equal(first.imageUrl, "https://res.cloudinary.com/test-cloud/image/upload/f_auto,q_auto,w_1920,c_limit/oceao/hero/live-0");
@@ -463,6 +463,35 @@ describe("Admin hero", () => {
             });
         });
 
+        describe("the text style", () => {
+            it("is 'dark' when not sent", async () => {
+                const res = await upload();
+
+                assert.equal(res.status, 201);
+                assert.equal(res.body.data.slide.textStyle, "dark");
+                assert.equal((await HeroSlide.findOne({ publicId: "oceao/hero/up1" }).lean()).textStyle, "dark");
+            });
+
+            it("'light' is saved and returned", async () => {
+                const res = await upload({ fields: { textStyle: "light" } });
+
+                assert.equal(res.status, 201);
+                assert.equal(res.body.data.slide.textStyle, "light");
+                assert.equal((await HeroSlide.findOne({ publicId: "oceao/hero/up1" }).lean()).textStyle, "light");
+            });
+
+            it("anything else is 400 and nothing is uploaded", async () => {
+                for (const textStyle of ["blue", "LIGHT", "", "dark,light"]) {
+                    const res = await upload({ fields: { textStyle } });
+
+                    assert.equal(res.status, 400, textStyle);
+                    assert.equal(res.body.code, "VALIDATION_FAILED");
+                    assert.ok(res.body.errors.textStyle, textStyle);
+                }
+                assert.equal(fake.state.uploads.length, 0);
+            });
+        });
+
         it("if Cloudinary fails: 502 IMAGE_UPLOAD_FAILED and nothing is saved", async () => {
             quiet();
             fake.state.failUpload = true;
@@ -562,6 +591,41 @@ describe("Admin hero", () => {
             }
             assert.deepEqual(await HeroSlide.findById(id).lean(), before);
             assert.equal(await AuditLog.countDocuments(), 0);
+        });
+
+        it("the text style can be changed, on its own or with the texts; the picture still cannot", async () => {
+            const id = await idOf();
+
+            const alone = await patch(id, { textStyle: "light" });
+            const together = await patch(id, { textStyle: "dark", name: "Back to dark" });
+
+            assert.equal(alone.status, 200);
+            assert.equal(alone.body.data.slide.textStyle, "light");
+            assert.equal(together.body.data.slide.textStyle, "dark");
+            assert.equal(together.body.data.slide.name, "Back to dark");
+            const [entry] = (await audits("hero.slide.edit")).sort((a, b) => a.createdAt - b.createdAt);
+            assert.deepEqual(entry.detail.fields, ["textStyle"]);
+            assert.equal(fake.state.uploads.length + fake.state.destroys.length, 0);
+        });
+
+        it("an unknown text style is 400", async () => {
+            const id = await idOf();
+
+            for (const textStyle of ["blue", "", null, 1]) {
+                const res = await patch(id, { textStyle });
+
+                assert.equal(res.status, 400, String(textStyle));
+                assert.ok(res.body.errors.textStyle, String(textStyle));
+            }
+            assert.equal((await HeroSlide.findById(id).lean()).textStyle ?? "dark", "dark");
+        });
+
+        it("a slide saved before the field existed is listed as 'dark'", async () => {
+            await HeroSlide.collection.insertOne({ ...slide("live", 7), createdAt: new Date(), updatedAt: new Date() });
+
+            const res = await get();
+
+            assert.equal(res.body.data.live.find((s) => s.publicId === "oceao/hero/live-7").textStyle, "dark");
         });
 
         it("a file sent to PATCH is rejected (multipart is not accepted here)", async () => {

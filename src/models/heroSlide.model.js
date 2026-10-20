@@ -2,6 +2,11 @@ import mongoose, { Schema } from "mongoose";
 
 export const HERO_SETS = Object.freeze(["live", "scheduled"]);
 
+// How the hero text (heading, paragraph, buttons) is coloured while this slide is on show:
+//   "dark"   dark text, for light photos (the original look, and the default)
+//   "light"  light text with a soft dark shade behind it, for dark photos
+export const HERO_TEXT_STYLES = Object.freeze(["dark", "light"]);
+
 export const HERO_LIMITS = Object.freeze({
     name: { min: 2, max: 80 },
     location: { min: 2, max: 80 },
@@ -26,6 +31,7 @@ const heroSlideSchema = new Schema({
     location: { type: String, required: true, trim: true, minlength: HERO_LIMITS.location.min, maxlength: HERO_LIMITS.location.max },
     description: { type: String, required: true, trim: true, maxlength: HERO_LIMITS.description.max },
     credit: { type: String, trim: true, maxlength: HERO_LIMITS.credit.max },
+    textStyle: { type: String, enum: HERO_TEXT_STYLES, default: "dark" },
 }, {
     strict: true,
     timestamps: true,

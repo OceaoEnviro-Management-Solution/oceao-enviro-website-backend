@@ -277,6 +277,14 @@ describe("Hero slides", () => {
             assert.equal(HeroSlide.collection.name, "hero_slides");
         });
 
+        it("textStyle is dark or light (dark when not given), nothing else", async () => {
+            const plain = await HeroSlide.create(slide("live", 1));
+            assert.equal(plain.textStyle, "dark");
+            assert.equal((await HeroSlide.create(slide("live", 2, { textStyle: "light" }))).textStyle, "light");
+            await refused({ textStyle: "blue" });
+            await refused({ textStyle: "" });
+        });
+
         it("set must be live or scheduled", async () => {
             await refused({ set: "draft" });
             await refused({ set: undefined });
@@ -570,7 +578,7 @@ describe("Hero slides", () => {
             assert.deepEqual(Object.keys(res.body.data), ["slides"]);
             assert.deepEqual(res.body.data.slides.map((s) => s.name), ["live slide 1", "live slide 2", "live slide 3"]);
             const first = res.body.data.slides[0];
-            assert.deepEqual(Object.keys(first), ["id", "imageUrl", "name", "location", "description", "credit"]);
+            assert.deepEqual(Object.keys(first), ["id", "imageUrl", "name", "location", "description", "textStyle", "credit"]);
             assert.match(first.id, /^[0-9a-f]{24}$/);
             assert.equal(first.imageUrl, "https://res.cloudinary.com/test-cloud/image/upload/f_auto,q_auto,w_1920,c_limit/oceao/hero/live-1");
             assert.equal(first.location, "Himachal Pradesh");
@@ -585,8 +593,24 @@ describe("Hero slides", () => {
 
             for (const entry of res.body.data.slides) {
                 assert.ok(!("credit" in entry), JSON.stringify(entry));
-                assert.deepEqual(Object.keys(entry), ["id", "imageUrl", "name", "location", "description"]);
+                assert.deepEqual(Object.keys(entry), ["id", "imageUrl", "name", "location", "description", "textStyle"]);
             }
+        });
+
+        it("tells the website how to colour the hero text for each slide (textStyle)", async () => {
+            await HeroSlide.insertMany([slide("live", 1, { textStyle: "light" }), slide("live", 2, { textStyle: "dark" })]);
+
+            const res = await get();
+
+            assert.deepEqual(res.body.data.slides.map((s) => s.textStyle), ["light", "dark"]);
+        });
+
+        it("a slide saved before the field existed is 'dark'", async () => {
+            await HeroSlide.collection.insertOne({ ...slide("live", 1), createdAt: new Date(), updatedAt: new Date() });   // no textStyle at all
+
+            const res = await get();
+
+            assert.equal(res.body.data.slides[0].textStyle, "dark");
         });
 
         it("shows only live slides, never the scheduled ones, and nothing internal", async () => {

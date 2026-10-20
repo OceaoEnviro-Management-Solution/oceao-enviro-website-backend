@@ -81,7 +81,10 @@ export const promoteIfDue = ({ now = new Date() } = {}) => {
     return running;
 };
 
-/** The slides the homepage shows now, by order. credit is left out when there is none. */
+/**
+ * The slides the homepage shows now, by order. credit is left out when there is none.
+ * textStyle is "dark" for a slide saved before the field existed.
+ */
 export const getLiveSlides = async () => {
     const slides = await HeroSlide.find({ set: "live" }).sort({ order: 1, _id: 1 }).lean();
 
@@ -91,6 +94,7 @@ export const getLiveSlides = async () => {
         name: slide.name,
         location: slide.location,
         description: slide.description,
+        textStyle: slide.textStyle ?? "dark",
         ...(slide.credit ? { credit: slide.credit } : {}),
     }));
 };

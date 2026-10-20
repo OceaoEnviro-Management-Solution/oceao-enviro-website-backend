@@ -262,11 +262,12 @@ No body, no query (any key is 400 `VALIDATION_FAILED`). → 200
 ```json
 { "slides": [
   { "id": "6720f1c2a9b3c4d5e6f70812", "imageUrl": "https://res.cloudinary.com/<cloud>/image/upload/f_auto,q_auto,w_1920,c_limit/oceao/hero/abc123",
-    "name": "Rohtang Pass", "location": "Himachal Pradesh", "description": "Early snow on the pass.", "credit": "Photo: A. Kumar" }
+    "name": "Rohtang Pass", "location": "Himachal Pradesh", "description": "Early snow on the pass.", "textStyle": "dark", "credit": "Photo: A. Kumar" }
 ] }
 ```
 - Live slides only, by `order` (ascending). `[]` when there are none.
 - `credit` is left out when the slide has none.
+- `textStyle`: `"dark"` or `"light"`, how the website colours the hero text (heading, paragraph, buttons) while this slide is on show: `dark` = dark text for light photos (the original look), `light` = light text with a soft dark shade behind it for dark photos. A slide saved before this field existed is `"dark"`.
 - `imageUrl` is an HTTPS link that serves the best format and quality at most 1920 px wide; it is not the original file.
 - Length limits (for the admin stage): `name` and `location` 2-80, `description` up to 120, `credit` up to 80.
 - A switch that fails is logged and does not fail the request: the slides that exist are returned, and the switch is tried again on the next request.
@@ -362,9 +363,9 @@ A slide, as the admin sees it:
   "publicId": "oceao/hero/abc123", "url": "https://res.cloudinary.com/<cloud>/image/upload/v1/oceao/hero/abc123.jpg",
   "imageUrl": "https://res.cloudinary.com/<cloud>/image/upload/f_auto,q_auto,w_1920,c_limit/oceao/hero/abc123",
   "width": 4000, "height": 2250, "name": "Rohtang Pass", "location": "Himachal Pradesh",
-  "description": "Early snow on the pass.", "credit": null, "createdAt": "...", "updatedAt": "..." }
+  "description": "Early snow on the pass.", "credit": null, "textStyle": "dark", "createdAt": "...", "updatedAt": "..." }
 ```
-`credit` is `null` when there is none. `imageUrl` is the link to show; `url` is the original.
+`credit` is `null` when there is none. `textStyle` is `dark` or `light` (see the public endpoint). `imageUrl` is the link to show; `url` is the original.
 
 ### GET /admin/hero
 
@@ -373,7 +374,7 @@ No query. Does the planned switch first if its day has come (like the public end
 
 ### POST /admin/hero/slides  (multipart/form-data)
 
-The only admin write that is **not JSON**: send `multipart/form-data` with the picture in the file field `image` and the text fields `set` (`live` | `scheduled`), `name`, `location`, `description`, `credit` (optional; blank = none) and `performedBy`. Any other field, a second file or a file under another name is 400.
+The only admin write that is **not JSON**: send `multipart/form-data` with the picture in the file field `image` and the text fields `set` (`live` | `scheduled`), `name`, `location`, `description`, `credit` (optional; blank = none), `textStyle` (optional: `dark` | `light`, default `dark`) and `performedBy`. Any other field, a second file or a file under another name is 400.
 - The picture: at most **10 MB**; its real type (from the bytes, not the name) must be JPG, PNG or WebP, otherwise 400 `INVALID_FILE_TYPE`; larger → 413 `FILE_TOO_LARGE`.
 - If the set already has 5 slides → 409 `SET_FULL`, checked **before** anything is uploaded.
 - The new slide goes last: `order` = highest order in the set + 1 (0 for the first).
@@ -383,7 +384,7 @@ Errors: VALIDATION_FAILED, INVALID_FILE_TYPE, FILE_TOO_LARGE, UPLOAD_ERROR, SET_
 
 ### PATCH /admin/hero/slides/:id
 
-JSON body: any of `name`, `location`, `description`, `credit` (at least one) plus `performedBy`. `credit: ""` or `null` removes the credit. **The picture cannot be changed**: `image`, `publicId`, `url`, `set`, `order` or any other field is 400 (delete the slide and add a new one instead). → 200 `data: { "slide": slide }`. Errors: VALIDATION_FAILED, NOT_FOUND.
+JSON body: any of `name`, `location`, `description`, `credit`, `textStyle` (at least one) plus `performedBy`. `credit: ""` or `null` removes the credit; `textStyle` is `dark` or `light`. **The picture cannot be changed**: `image`, `publicId`, `url`, `set`, `order` or any other field is 400 (delete the slide and add a new one instead). → 200 `data: { "slide": slide }`. Errors: VALIDATION_FAILED, NOT_FOUND.
 
 ### DELETE /admin/hero/slides/:id
 

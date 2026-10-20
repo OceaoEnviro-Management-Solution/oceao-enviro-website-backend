@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { HERO } from "../config/hero.js";
-import { HERO_LIMITS, HERO_SETS } from "../models/heroSlide.model.js";
+import { HERO_LIMITS, HERO_SETS, HERO_TEXT_STYLES } from "../models/heroSlide.model.js";
 import { isValidDateKey } from "../utils/time.js";
 
 // Who did it (the employee name typed in the admin UI). Kept in the audit log.
@@ -13,6 +13,8 @@ const performedBy = z
 const slideId = z.string({ error: "A slide id is required" }).regex(/^[0-9a-fA-F]{24}$/, "Must be a slide id");
 
 const set = z.enum(HERO_SETS, { error: `Must be one of: ${HERO_SETS.join(", ")}` });
+
+const textStyle = z.enum(HERO_TEXT_STYLES, { error: `Must be one of: ${HERO_TEXT_STYLES.join(", ")}` });
 
 const required = (label, { min = 1, max }) =>
     z
@@ -27,7 +29,7 @@ const description = required("Description", HERO_LIMITS.description);
 const creditText = z.string({ error: "Credit must be text" }).trim().max(HERO_LIMITS.credit.max, `Credit cannot exceed ${HERO_LIMITS.credit.max} characters`);
 
 // POST /admin/hero/slides: the text fields of the multipart form (the picture is the "image" file).
-// A blank credit means no credit.
+// A blank credit means no credit. textStyle is optional and defaults to "dark".
 const createSlideSchema = z
     .object({
         set,
@@ -35,12 +37,14 @@ const createSlideSchema = z
         location,
         description,
         credit: creditText.optional().transform((value) => value || undefined),
+        textStyle: textStyle.optional(),
         performedBy,
     })
     .strict();
 
-// PATCH /admin/hero/slides/:id: text only. The picture can never be changed here, so there is no
-// image field (and any unknown field is a 400). At least one of the four texts is needed.
+// PATCH /admin/hero/slides/:id: texts and text style only. The picture can never be changed here, so
+// there is no image field (and any unknown field is a 400). At least one of the four texts or the
+// text style is needed.
 // credit "" or null removes the credit.
 const updateSlideSchema = z
     .object({
@@ -48,12 +52,13 @@ const updateSlideSchema = z
         location: location.optional(),
         description: description.optional(),
         credit: z.union([creditText, z.null()], { error: "Credit must be text or null" }).optional(),
+        textStyle: textStyle.optional(),
         performedBy,
     })
     .strict()
     .refine(
-        (body) => ["name", "location", "description", "credit"].some((key) => body[key] !== undefined),
-        { message: "Send at least one of name, location, description or credit", path: ["name"] }
+        (body) => ["name", "location", "description", "credit", "textStyle"].some((key) => body[key] !== undefined),
+        { message: "Send at least one of name, location, description, credit or textStyle", path: ["name"] }
     );
 
 const slideIdParamsSchema = z.object({ id: slideId }).strict();

@@ -32,6 +32,7 @@ export const toAdminSlide = (slide) => ({
     location: slide.location,
     description: slide.description,
     credit: slide.credit ?? null,
+    textStyle: slide.textStyle ?? "dark",
     createdAt: slide.createdAt,
     updatedAt: slide.updatedAt,
 });
@@ -64,7 +65,7 @@ export const getAdminHero = async () => {
 };
 
 /** Adds a slide at the end of its set. `file` is multer's memory file. */
-export const addSlide = async ({ set, name, location, description, credit, performedBy }, file) => {
+export const addSlide = async ({ set, name, location, description, credit, textStyle, performedBy }, file) => {
     // 1. Refuse a full set before anything is uploaded.
     if ((await HeroSlide.countDocuments({ set })) >= HERO.maxSlidesPerSet) throw setIsFull(set);
 
@@ -90,6 +91,7 @@ export const addSlide = async ({ set, name, location, description, credit, perfo
             name,
             location,
             description,
+            textStyle: textStyle ?? "dark",
             ...(credit ? { credit } : {}),
         });
 
@@ -115,7 +117,7 @@ export const addSlide = async ({ set, name, location, description, credit, perfo
     return toAdminSlide(slide.toObject());
 };
 
-/** Edits the texts of a slide. The picture is never touched. credit "" or null removes the credit. */
+/** Edits the texts and the text style of a slide. The picture is never touched. credit "" or null removes the credit. */
 export const updateSlide = async (id, { performedBy, ...fields }) => {
     const changes = Object.keys(fields).filter((key) => fields[key] !== undefined);
     const update = { $set: {}, $unset: {} };
