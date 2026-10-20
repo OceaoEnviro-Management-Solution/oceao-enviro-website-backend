@@ -10,6 +10,8 @@ export const AUDIT_TARGET_TYPES = Object.freeze([
     "callback_bucket",
     "holiday",
     "settings",
+    "hero_slide",
+    "hero_set",
 ]);
 
 // One entry per admin write (AGENT_CONTEXT.md section 12). Entries are kept 180 days and then

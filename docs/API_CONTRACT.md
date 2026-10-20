@@ -28,7 +28,7 @@ Every response, success or error, has an `X-Request-Id` header: a new UUID per r
 
 ### Strict input
 
-Body, query string and path parameters are validated against strict schemas. A field that is not listed for an endpoint is `400 VALIDATION_FAILED` with `errors: { "<field>": ["Unexpected field"] }`. The endpoints that take no input (`POST /admin/auth/logout`, `GET /admin/auth/me`, `GET /admin/settings`, `POST /visits`, `GET /visits/total`, `GET /aqi`, `GET /hero`, `GET /updates/latest`, `GET /admin/updates/sync-status`, `POST /admin/updates/sync`) reject any key at all. A request part an endpoint does not use (such as a body on a GET) is never read. The one exception: an `email` in the `POST /vm/bookings` body is accepted and discarded. Values must have the documented type, so an object such as `{ "$gt": "" }` where a string is expected is a 400 too.
+Body, query string and path parameters are validated against strict schemas. A field that is not listed for an endpoint is `400 VALIDATION_FAILED` with `errors: { "<field>": ["Unexpected field"] }`. The endpoints that take no input (`POST /admin/auth/logout`, `GET /admin/auth/me`, `GET /admin/settings`, `POST /visits`, `GET /visits/total`, `GET /aqi`, `GET /hero`, `GET /updates/latest`, `GET /admin/hero`, `GET /admin/updates/sync-status`, `POST /admin/updates/sync`) reject any key at all. A request part an endpoint does not use (such as a body on a GET) is never read. The one exception: an `email` in the `POST /vm/bookings` body is accepted and discarded. Values must have the documented type, so an object such as `{ "$gt": "" }` where a string is expected is a 400 too.
 
 ### Rate limits
 
@@ -55,16 +55,17 @@ The visit counter has its own limit: `POST /visits` allows 10 per **hour** per I
 | VALIDATION_FAILED | 400 | zod failure, see `errors` |
 | INVALID_JSON | 400 | malformed JSON body |
 | CAPTCHA_FAILED | 400 | Turnstile missing/invalid |
-| INVALID_FILE_TYPE | 400 | not pdf/jpg/png by content |
+| INVALID_FILE_TYPE | 400 | not pdf/jpg/png by content (hero slides: not jpg/png/webp) |
 | UPLOAD_ERROR | 400 | other multer error |
 | OTP_NOT_FOUND | 400 | no active code for email |
 | OTP_INVALID | 400 | wrong code, `errors.attemptsLeft` |
 | BOOKING_TOKEN_INVALID | 401 | missing/expired/wrong booking token |
 | INVALID_CREDENTIALS | 401 | admin login failed |
 | ADMIN_UNAUTHORIZED | 401 | no/invalid admin session |
-| CSRF_REJECTED | 403 | admin write from bad Origin/content type |
+| CSRF_REJECTED | 403 | admin write from bad Origin/content type (JSON everywhere, except `POST /admin/hero/slides`, which must be multipart/form-data) |
 | NOT_FOUND | 404 | route or resource not found |
 | SLOT_TAKEN | 409 | VM slot booked or blocked |
+| SET_FULL | 409 | a hero set (live or scheduled) already has 5 slides |
 | ACTIVE_BOOKING_EXISTS | 409 | email already has an upcoming VM booking |
 | PERIOD_FULL | 409 | callback period at capacity |
 | PERIOD_BLOCKED | 409 | callback period blocked |
@@ -73,9 +74,10 @@ The visit counter has its own limit: `POST /visits` allows 10 per **hour** per I
 | MEET_ALREADY_CREATED | 409 | retry on a booking that has a link |
 | CONFLICT | 409 | duplicate holiday date; status change on a cancelled callback request; a slot or period being changed at the same moment (retry); a Meet link already being created |
 | OTP_EXPIRED | 410 | code expired |
-| FILE_TOO_LARGE | 413 | > 5 MB |
+| FILE_TOO_LARGE | 413 | > 5 MB (hero slide image: > 10 MB) |
 | PAYLOAD_TOO_LARGE | 413 | body > 20 kb |
 | ALREADY_CLOSED | 422 | holiday on a date already closed by rule |
+| INVALID_SWITCH_DATE | 422 | hero switch date is not after today (IST) |
 | DATE_NOT_BOOKABLE | 422 | `errors.reason` = past, beyond_horizon, non_working_day, holiday, invalid_date, closed |
 | RATE_LIMITED | 429 | IP limiter; `Retry-After` header |
 | OTP_COOLDOWN | 429 | `errors.retryAfterSec` |
@@ -84,6 +86,7 @@ The visit counter has its own limit: `POST /visits` allows 10 per **hour** per I
 | EMAIL_SEND_FAILED | 502 | OTP email could not be sent |
 | PARIVESH_SYNC_FAILED | 502 | admin "sync now": PARIVESH could not be read or sent nothing usable; nothing was changed |
 | MEET_CREATE_FAILED | 502 | Google failed on admin retry |
+| IMAGE_UPLOAD_FAILED | 502 | Cloudinary could not store a hero image; nothing was saved |
 | BAD_REQUEST | 4xx | a client error raised by the framework that has no code of its own (for example an unsupported body charset) |
 | INTERNAL_ERROR | 500 | anything else; in production every 5xx |
 
@@ -344,6 +347,61 @@ No query. → `{ "lastSuccessAt": "2026-10-19T10:00:00.000Z", "lastAttemptAt": "
 
 No body, no query (any key is 400 `VALIDATION_FAILED`). Runs a sync now (the same as the scheduled one; if one is already running it waits for that one) → 200 `{ "received": 489, "saved": 330, "inserted": 5, "updated": 1, "skipped": 159 }`: `saved` = items written (new or already stored), `inserted` = new, `updated` = existing items that changed.
 If PARIVESH cannot be read or sends nothing usable → 502 `PARIVESH_SYNC_FAILED` (nothing is changed, the failure shows in sync-status). Limited to **one per 5 minutes in total**: otherwise 429 `RATE_LIMITED` with `Retry-After`. Needs a session and the usual admin write checks.
+
+---
+
+## Admin: Homepage hero (`/admin/hero`)
+
+Manage the two sets of homepage hero slides (see "Public: Homepage hero" for how the switch works): `live` is on the site now, `scheduled` is the next set. Each set holds **at most 5** slides. All routes need an admin session; every write needs a trusted `Origin` and creates one audit entry. Pictures are stored in Cloudinary (folder `oceao/hero`); the API never accepts a picture URL or id from the client.
+
+Every write takes `performedBy` (2-60 characters, the employee's name; it goes to the audit log). Text limits: `name` and `location` 2-80, `description` 1-120, `credit` 0-80 (optional).
+
+A slide, as the admin sees it:
+```json
+{ "id": "6720f1c2a9b3c4d5e6f70812", "set": "live", "order": 0,
+  "publicId": "oceao/hero/abc123", "url": "https://res.cloudinary.com/<cloud>/image/upload/v1/oceao/hero/abc123.jpg",
+  "imageUrl": "https://res.cloudinary.com/<cloud>/image/upload/f_auto,q_auto,w_1920,c_limit/oceao/hero/abc123",
+  "width": 4000, "height": 2250, "name": "Rohtang Pass", "location": "Himachal Pradesh",
+  "description": "Early snow on the pass.", "credit": null, "createdAt": "...", "updatedAt": "..." }
+```
+`credit` is `null` when there is none. `imageUrl` is the link to show; `url` is the original.
+
+### GET /admin/hero
+
+No query. Does the planned switch first if its day has come (like the public endpoint). → 200
+`{ "live": [slide, ...], "scheduled": { "switchDate": "2026-12-01" | null, "slides": [slide, ...] } }`, each list by `order`.
+
+### POST /admin/hero/slides  (multipart/form-data)
+
+The only admin write that is **not JSON**: send `multipart/form-data` with the picture in the file field `image` and the text fields `set` (`live` | `scheduled`), `name`, `location`, `description`, `credit` (optional; blank = none) and `performedBy`. Any other field, a second file or a file under another name is 400.
+- The picture: at most **10 MB**; its real type (from the bytes, not the name) must be JPG, PNG or WebP, otherwise 400 `INVALID_FILE_TYPE`; larger → 413 `FILE_TOO_LARGE`.
+- If the set already has 5 slides → 409 `SET_FULL`, checked **before** anything is uploaded.
+- The new slide goes last: `order` = highest order in the set + 1 (0 for the first).
+- → 201 `data: { "slide": slide }`.
+- If Cloudinary fails → 502 `IMAGE_UPLOAD_FAILED` (nothing saved). If saving fails after the upload, the uploaded picture is deleted from Cloudinary again.
+Errors: VALIDATION_FAILED, INVALID_FILE_TYPE, FILE_TOO_LARGE, UPLOAD_ERROR, SET_FULL, IMAGE_UPLOAD_FAILED.
+
+### PATCH /admin/hero/slides/:id
+
+JSON body: any of `name`, `location`, `description`, `credit` (at least one) plus `performedBy`. `credit: ""` or `null` removes the credit. **The picture cannot be changed**: `image`, `publicId`, `url`, `set`, `order` or any other field is 400 (delete the slide and add a new one instead). → 200 `data: { "slide": slide }`. Errors: VALIDATION_FAILED, NOT_FOUND.
+
+### DELETE /admin/hero/slides/:id
+
+JSON body `{ "performedBy" }`. Deletes the slide from the database first, then its picture from Cloudinary (a Cloudinary failure is logged, it does not fail the request), then renumbers the remaining slides of that set `0..n-1` in their current order. → 200 `data: { "id", "set", "remaining": 2 }`. Errors: VALIDATION_FAILED, NOT_FOUND.
+
+### PUT /admin/hero/order
+
+JSON body `{ "set": "live", "ids": ["<id>", ...], "performedBy" }`. `ids` must be **exactly** the ids of the slides in that set, each once, in the new order; anything missing, extra, repeated or from another set is 400 `VALIDATION_FAILED` (`errors.ids`) and nothing changes. The new order is saved with one bulk write. → 200 `data: { "set": "live", "slides": [slide, ...] }`.
+
+### PUT /admin/hero/schedule
+
+JSON body `{ "switchDate": "2026-12-01", "performedBy" }`. The date must be **after today** in India time: today or earlier is 422 `INVALID_SWITCH_DATE`; a malformed date is 400. Replaces any earlier date. → 200 `data: { "switchDate": "2026-12-01", "scheduledSlides": 3 }`. (With no scheduled slides on that day the switch just clears the date and the live slides stay.)
+
+### DELETE /admin/hero/schedule
+
+JSON body `{ "performedBy" }`. Removes the planned date; the scheduled slides stay as a draft and no picture is deleted. Also fine when nothing was planned. → 200 `data: { "switchDate": null, "scheduledSlides": 3 }`.
+
+Audit actions: `hero.slide.add`, `hero.slide.edit`, `hero.slide.delete` (target: the slide id), `hero.order` (target: the set), `hero.schedule.set` and `hero.schedule.clear` (target: `heroSwitchDate`).
 
 ---
 

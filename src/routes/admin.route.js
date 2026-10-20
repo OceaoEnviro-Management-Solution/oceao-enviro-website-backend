@@ -13,6 +13,15 @@ import {
 import { handleAdminVisits } from "../controllers/visits.controller.js";
 import { handleSyncStatus, handleSyncNow } from "../controllers/updates.controller.js";
 import {
+    handleHeroGet,
+    handleSlideAdd,
+    handleSlideUpdate,
+    handleSlideDelete,
+    handleOrder,
+    handleScheduleSet,
+    handleScheduleClear,
+} from "../controllers/adminHero.controller.js";
+import {
     handleVmBlock,
     handleVmUnblock,
     handleVmCancel,
@@ -37,9 +46,18 @@ import { validateParams } from "../middlewares/validateParams.middleware.js";
 import { adminLoginLimiter, adminSyncLimiter } from "../middlewares/rateLimit.js";
 import { requireAdmin } from "../middlewares/requireAdmin.js";
 import { adminCsrf } from "../middlewares/adminCsrf.js";
+import { heroUpload, verifyHeroImage } from "../middlewares/heroUpload.middleware.js";
 import { noInputSchema } from "../validators/common.js";
 import { loginSchema } from "../validators/adminAuth.validator.js";
 import { adminVisitsQuerySchema } from "../validators/visits.validator.js";
+import {
+    createSlideSchema,
+    updateSlideSchema,
+    slideIdParamsSchema,
+    performedBySchema,
+    orderSchema,
+    scheduleSchema,
+} from "../validators/adminHero.validator.js";
 import {
     dashboardQuerySchema,
     bookingsQuerySchema,
@@ -91,9 +109,19 @@ router.get("/settings", validateQuery(noInputSchema), handleSettings);
 router.get("/holidays", validateQuery(holidaysQuerySchema), handleHolidays);
 router.get("/visits", validateQuery(adminVisitsQuerySchema), handleAdminVisits);
 router.get("/updates/sync-status", validateQuery(noInputSchema), handleSyncStatus);
+router.get("/hero", validateQuery(noInputSchema), handleHeroGet);
 
 // ── PARIVESH updates: sync now (no input; one per 5 minutes) ──────────────────
 router.post("/updates/sync", validateBody(noInputSchema), adminSyncLimiter, handleSyncNow);
+
+// ── Homepage hero (each write creates an audit entry) ─────────────────────────
+// Adding a slide is multipart (the picture is the "image" file); the rest take JSON.
+router.post("/hero/slides", heroUpload, verifyHeroImage, validateBody(createSlideSchema), handleSlideAdd);
+router.patch("/hero/slides/:id", validateParams(slideIdParamsSchema), validateBody(updateSlideSchema), handleSlideUpdate);
+router.delete("/hero/slides/:id", validateParams(slideIdParamsSchema), validateBody(performedBySchema), handleSlideDelete);
+router.put("/hero/order", validateBody(orderSchema), handleOrder);
+router.put("/hero/schedule", validateBody(scheduleSchema), handleScheduleSet);
+router.delete("/hero/schedule", validateBody(performedBySchema), handleScheduleClear);
 
 // ── VM actions (each writes one audit entry) ──────────────────────────────────
 router.post("/vm/blocks", validateBody(slotTargetSchema), handleVmBlock);
