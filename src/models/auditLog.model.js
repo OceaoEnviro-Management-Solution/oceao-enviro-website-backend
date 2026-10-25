@@ -12,6 +12,8 @@ export const AUDIT_TARGET_TYPES = Object.freeze([
     "settings",
     "hero_slide",
     "hero_set",
+    "job",
+    "job_application",
 ]);
 
 // One entry per admin write (AGENT_CONTEXT.md section 12). Entries are kept 180 days and then

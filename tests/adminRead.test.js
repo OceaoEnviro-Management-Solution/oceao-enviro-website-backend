@@ -1,7 +1,7 @@
 import { describe, it, before, after, beforeEach } from "node:test";
 import assert from "node:assert/strict";
 import os from "node:os";
-import { spawnSync } from "node:child_process";
+import { spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import mongoose from "mongoose";
 import request from "supertest";
@@ -764,9 +764,10 @@ describe("Admin read endpoints", () => {
         const script = fileURLToPath(new URL("../scripts/seed-demo.js", import.meta.url));
         const seedDb = () => mongoose.connection.client.db(DB_NAME);
 
-        const run = (nodeEnv) =>
-            spawnSync(process.execPath, [script], {
-                encoding: "utf8",
+        // Started with spawn, not spawnSync: this test process owns the in-memory MongoDB and reads its
+        // log pipe, so blocking it while the script builds indexes could stall MongoDB until the timeout.
+        const run = (nodeEnv) => new Promise((resolve, reject) => {
+            const child = spawn(process.execPath, [script], {
                 cwd: os.tmpdir(),   // so dotenv cannot read the real .env
                 timeout: 120000,
                 env: {
@@ -792,6 +793,13 @@ describe("Admin read endpoints", () => {
                     ...TEST_ADMIN_ENV,
                 },
             });
+            let stdout = "";
+            let stderr = "";
+            child.stdout.setEncoding("utf8").on("data", (chunk) => { stdout += chunk; });
+            child.stderr.setEncoding("utf8").on("data", (chunk) => { stderr += chunk; });
+            child.on("error", reject);
+            child.on("close", (status) => resolve({ status, stdout, stderr }));
+        });
 
         const dump = async () => {
             const db = seedDb();
@@ -810,7 +818,7 @@ describe("Admin read endpoints", () => {
 
         it("refuses unless NODE_ENV=development, and touches nothing", async () => {
             for (const nodeEnv of ["production", "test", undefined]) {
-                const result = run(nodeEnv);
+                const result = await run(nodeEnv);
 
                 assert.equal(result.status, 1, `NODE_ENV=${nodeEnv}`);
                 assert.match(result.stderr, /NODE_ENV=development/, `NODE_ENV=${nodeEnv}`);
@@ -822,7 +830,7 @@ describe("Admin read endpoints", () => {
         });
 
         it("creates bookings, blocks and requests over the next 7 working days with example.com emails only", async () => {
-            const result = run("development");
+            const result = await run("development");
 
             assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`);
             const { vmBookings, vmSlots, requests, buckets } = await dump();
@@ -863,10 +871,10 @@ describe("Admin read endpoints", () => {
         });
 
         it("is safe to run again: nothing is duplicated", async () => {
-            assert.equal(run("development").status, 0);
+            assert.equal((await run("development")).status, 0);
             const first = await dump();
 
-            const second = run("development");
+            const second = await run("development");
             assert.equal(second.status, 0, `${second.stdout}\n${second.stderr}`);
             const after = await dump();
 

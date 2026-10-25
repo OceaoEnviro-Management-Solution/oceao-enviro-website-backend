@@ -178,6 +178,10 @@ Cloudflare Turnstile. Backend verifies `turnstileToken` at `https://challenges.c
 | callbackConfirmationCustomer | customer | callback created |
 | callbackNotificationCompany | COMPANY_MAIL, Reply-To customer | callback created |
 | callbackCancellationCustomer | customer | admin cancel |
+| jobApplicationCompany | CAREERS_MAIL (else COMPANY_MAIL), Reply-To candidate, resume attached | job application saved |
+| jobApplicationCandidate | candidate | job application saved |
+| generalApplicationCompany | CAREERS_MAIL (else COMPANY_MAIL), Reply-To candidate, resume attached | general application (no job); awaited, failure → 502 |
+| generalApplicationCandidate | candidate | after the HR email of a general application went out |
 
 All booking emails except OTP are fire-and-forget through `notify.service.js` (catch + log).
 
@@ -196,6 +200,8 @@ Every admin write creates one `AuditLog` entry: `action` (e.g. `vm.block`, `vm.c
 | TRUST_PROXY | 0.2 | 0 locally, 1 behind a host proxy |
 | EMAIL_MODE | 0.2 | log / smtp / test |
 | MAIL_FROM, COMPANY_MAIL | 0.2 | |
+| CAREERS_MAIL | Careers B2 (optional) | inbox for job applications; empty = COMPANY_MAIL |
+| CAREERS_RETENTION_DAYS | Careers B2 (optional) | whole days 1-3650, default 365: applications and resumes are deleted after this |
 | SMTP_HOST, SMTP_PORT, SMTP_SECURE, SMTP_USER, SMTP_PASSWORD | 0.2 (smtp mode only) | |
 | OTP_SECRET, BOOKING_TOKEN_SECRET | 2.1 | ≥ 32 chars each |
 | GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, GOOGLE_REFRESH_TOKEN | 2.4 (optional) | missing = Meet disabled |
@@ -219,3 +225,33 @@ Frontend: `VITE_API_BASE_URL` (includes `/api/v1`), `VITE_TURNSTILE_SITE_KEY`.
 - Booking token lives only in `BookingContext` state. Admin session lives only in the httpOnly cookie; use `GET /admin/auth/me` to check it.
 - Map backend field names to form field names in the api/service layer or a small adapter, not inside presentational components.
 - Show backend error messages to users; never show raw stack traces or codes alone.
+
+## 16. Careers
+
+Job openings managed from the admin panel and listed at `/career/apply` on the website. Config: `src/config/careers.js` (lists, text limits, stats and view limits). Code: `src/services/careers/`.
+
+**jobs** (`Job`): `slug` (unique; kebab-case title, at most 60 characters, + `-` + 4 lowercase characters of the ids.js alphabet; made once and never changed), `title`, `department`, `location`, `employmentType` (Full-time | Part-time | Internship | Contract), `workMode` (On-site | Hybrid | Remote), `experienceMin`/`experienceMax` (whole years 0-40, min <= max), `openings` (optional 1-100), `salaryText` (optional), `summary`, `responsibilities`, `requirements`, `niceToHave` (optional), `visible` (default false), `acceptingApplications` (default true), `publishAt` (Date, required), `closesAt` (optional Date), `archived` (default false). Long texts are plain text, one point per line; never store or render HTML.
+
+**job_stats** (`JobStat`): `{ jobId, date (IST dateKey), views, applications }`, unique `{ jobId, date }`. Changed only by `incrementJobStat(jobId, field, now)`: one `updateOne` with `$inc` and upsert, retried on a duplicate key (same as the visitor counter). A day with nothing has no document.
+
+**Status is derived, never stored** (`services/careers/jobStatus.js`): `getJobStatus(job, now)` checks, in this order, `archived` -> `hidden` (!visible) -> `scheduled` (publishAt > now) -> `closed` (!acceptingApplications, or now >= closesAt) -> `live`. `isPubliclyVisible` = live or closed. So scheduling and deadlines need no background job. Public endpoints only ever show live and closed jobs; hidden, scheduled and archived ones answer the same 404 `JOB_NOT_FOUND` as a slug that does not exist.
+
+**IST dates** (`services/careers/jobFormat.js`): the admin form sends `publishAt` as `{ date, time }` in IST (stored as the real instant, `istToDate`) and `closesAt` as an IST date, stored as the last millisecond of that day (23:59:59.999 IST, so intake stops at midnight IST). Responses give the IST parts back (`publishDate`, `publishTime`, `closesOn`, `postedOn`). The deadline must be on or after the publish date; the service checks this and min <= max experience against the values that will be stored and answers a field error.
+
+Views: `POST /careers/jobs/:slug/view` counts one view per call (the website calls it once per browser session per job), skips bots like the visitor counter, and allows 30 per hour per IP (over the limit 200 `{ counted: false }`).
+
+Admin writes audit `career.job.<verb>` (target type `job`). A job with applications cannot be deleted (409 `JOB_HAS_APPLICATIONS`), only archived; deleting a job removes its stats.
+
+**jobapplications** (`JobApplication`): `applicationId` (unique, `OE-JA-YYMMDD-XXXX`, IST date of applying), `jobId`, `jobSnapshot { title, department, location, slug }` (the job as it was, so old emails and CSVs stay right after edits), `fullName`, `email` (lowercased), `phone` (normalized: optional `+` and 7-15 digits), `currentLocation`, `totalExperienceYears` (0-50, steps of 0.5), `currentOrganisation`, `currentDesignation`, `highestQualification`, `noticePeriod` (enum), `expectedCtc`, `profileUrl` (https only), `coverNote`, `consentAt`, `resume { publicId, originalName, sizeBytes, ext }`, `status` (`new` | `shortlisted` | `rejected` | `hired`), `statusUpdatedBy`. Indexes: unique `applicationId`, unique `{ jobId, email }` (one application per email per job, also under races), `{ jobId, createdAt: -1 }`, `{ createdAt: 1 }`.
+
+**Apply** (`POST /careers/jobs/:slug/apply`, `services/careers/applications.service.js`): rate limit 5/hour/IP → `careersUpload` (multer memory, field `resume`, 5 MB, 20 fields, real type PDF or DOCX via file-type) → `requireTurnstile` → strict zod (`consent` must be `"true"`) → `requireResume` → service: job live (else 404 / 409 `APPLICATIONS_CLOSED`), not applied before (409 `ALREADY_APPLIED`), upload the resume, save (a failed save deletes the upload; a duplicate-key race maps to `ALREADY_APPLIED`), `incrementJobStat(jobId, "applications")`, then `notifyJobApplication` in the background.
+
+**Resumes are private** (`cloudinary.service.js`): `uploadResume` stores `resource_type: "raw", type: "private"` in `oceao/resumes` as `<applicationId>.<ext>`; `getResumeDownloadUrl` makes a signed link valid 5 minutes (admin route only, audited); `deleteResume` never throws. The Cloudinary id is never sent to a browser and no public link exists. `npm run careers:probe` checks this against the real account.
+
+**Emails** (`templates/careers/`): the HR inbox (`CAREERS_MAIL`, else `COMPANY_MAIL`) gets every field, the job summary and a link to `/admin/careers/<jobId>`, Reply-To the candidate, with the resume attached from memory; the candidate gets a thank-you with the reference ID (no timeline, mentions the 12-month retention).
+
+**Admin applicants**: list (20 per page, status filter, counts), status change, resume link, CSV export (UTF-8 BOM, RFC 4180 quoting, formula guard on `= + - @ tab CR`). Audits: `career.application.status`, `career.resume.download` (target type `job_application`), `career.csv.export` (target type `job`). Job totals and the delete check count the real applications.
+
+**General applications** (`POST /careers/general-apply`, `services/careers/generalApplication.service.js`): a resume sent without a job ("Don't see the right role?" on /career/apply), with the same fields plus `desiredRole`. Nothing is stored or uploaded: the HR email with the resume attached is the application, so it is awaited (502 `APPLICATION_SEND_FAILED` if it fails) and only then is the candidate thanked. Reference IDs `OE-GA-YYMMDD-XXXX` (not stored). Own rate limit, 5/hour/IP.
+
+**Retention** (`services/careers/retention.service.js`): applications older than `CAREERS_RETENTION_DAYS` (default 365) are deleted with their resumes (database first, then Cloudinary) every day at 03:30 IST and once at start-up (scheduler), or by hand with `npm run careers:cleanup`.

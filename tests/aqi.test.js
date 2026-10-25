@@ -585,7 +585,8 @@ describe("AQI", () => {
             return { calls, stop, schedule };
         };
         // The PARIVESH job (tested in parivesh.test.js) is switched off here: never the real network.
-        const start = (options) => startJobs({ runParivesh: async () => {}, isPariveshDue: async () => false, ...options });
+        // So is the careers retention job (tested in careersApply.test.js).
+        const start = (options) => startJobs({ runParivesh: async () => {}, isPariveshDue: async () => false, runCareersCleanup: async () => {}, ...options });
         const deferred = () => {
             let resolve;
             const promise = new Promise((done) => { resolve = done; });
@@ -654,7 +655,7 @@ describe("AQI", () => {
             const stopJobs = start({ schedule, run: async () => {} });
             stopJobs();
 
-            assert.equal(stop.mock.callCount(), 2, "the AQI and the PARIVESH schedule");
+            assert.equal(stop.mock.callCount(), 3, "the AQI, the PARIVESH and the careers retention schedule");
         });
 
         it("only src/index.js starts the jobs, so tests (which load app.js) never schedule anything", async () => {

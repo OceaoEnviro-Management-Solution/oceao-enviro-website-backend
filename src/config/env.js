@@ -28,6 +28,10 @@ const envSchema = z
         EMAIL_MODE: z.preprocess(blankToUndefined, z.enum(["log", "smtp", "test"]).default("log")),
         MAIL_FROM: required(),
         COMPANY_MAIL: required(),
+        // Careers: the inbox that receives job applications (optional, falls back to COMPANY_MAIL),
+        // and after how many days applications and their resumes are deleted (default 365)
+        CAREERS_MAIL: optional().pipe(z.string().email("must be an email address").optional()),
+        CAREERS_RETENTION_DAYS: z.preprocess(blankToUndefined, z.coerce.number().int().min(1).max(3650).default(365)),
 
         // Required only when EMAIL_MODE=smtp (checked below)
         SMTP_HOST: optional(),
@@ -97,6 +101,7 @@ const loadConfig = () => {
     }
     return Object.freeze({
         ...result.data,
+        CAREERS_MAIL: result.data.CAREERS_MAIL ?? result.data.COMPANY_MAIL,
         CORS_ORIGINS: Object.freeze(result.data.CORS_ORIGINS),
     });
 };

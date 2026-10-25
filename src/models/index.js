@@ -13,6 +13,9 @@ import { AqiReading } from "./aqiReading.model.js";
 import { PariveshUpdate } from "./pariveshUpdate.model.js";
 import { SyncStatus } from "./syncStatus.model.js";
 import { HeroSlide } from "./heroSlide.model.js";
+import { Job } from "./job.model.js";
+import { JobStat } from "./jobStat.model.js";
+import { JobApplication } from "./jobApplication.model.js";
 
 export const models = Object.freeze({
     VmSlot,
@@ -28,6 +31,9 @@ export const models = Object.freeze({
     PariveshUpdate,
     SyncStatus,
     HeroSlide,
+    Job,
+    JobStat,
+    JobApplication,
 });
 
 /**

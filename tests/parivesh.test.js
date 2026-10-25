@@ -810,7 +810,7 @@ describe("PARIVESH updates", () => {
         const tick = () => new Promise((done) => setImmediate(done));
         // For the real start-up check, which reads the database: wait until the job has had its say.
         const settle = () => new Promise((done) => setTimeout(done, 150));
-        const base = { run: async () => {} };    // the AQI job is not under test here
+        const base = { run: async () => {}, runCareersCleanup: async () => {} };    // the AQI and careers jobs are not under test here
 
         it("syncs at minute 5 of every 6th hour, on the Indian clock, and node-cron accepts it", async () => {
             quiet();
@@ -892,7 +892,7 @@ describe("PARIVESH updates", () => {
             assert.doesNotThrow(() => startJobs({ schedule, ...base, runParivesh: async () => {}, isPariveshDue: async () => { throw new Error("db down"); } }));
             await tick();
 
-            assert.equal(calls.length, 2);
+            assert.equal(calls.length, 3, "AQI, PARIVESH and careers retention are all scheduled");
         });
 
         it("skips a scheduled sync while the previous one is still going", async () => {
@@ -915,14 +915,14 @@ describe("PARIVESH updates", () => {
             await next;
         });
 
-        it("stopping stops both schedules", () => {
+        it("stopping stops every schedule", () => {
             quiet();
             const { schedule, stop } = fakeCron();
 
             const stopJobs = startJobs({ schedule, ...base, runParivesh: async () => {}, isPariveshDue: async () => false });
             stopJobs();
 
-            assert.equal(stop.mock.callCount(), 2);
+            assert.equal(stop.mock.callCount(), 3);
         });
     });
 });

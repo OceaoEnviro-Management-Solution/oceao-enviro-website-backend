@@ -22,6 +22,23 @@ import {
     handleScheduleClear,
 } from "../controllers/adminHero.controller.js";
 import {
+    handleJobList,
+    handleJobCreate,
+    handleJobGet,
+    handleJobUpdate,
+    handleJobVisibility,
+    handleJobIntake,
+    handleJobDuplicate,
+    handleJobArchive,
+    handleJobUnarchive,
+    handleJobDelete,
+    handleJobStats,
+    handleApplicationList,
+    handleResumeLink,
+    handleApplicationStatus,
+    handleApplicantsCsv,
+} from "../controllers/adminCareers.controller.js";
+import {
     handleVmBlock,
     handleVmUnblock,
     handleVmCancel,
@@ -58,6 +75,20 @@ import {
     orderSchema,
     scheduleSchema,
 } from "../validators/adminHero.validator.js";
+import {
+    createJobSchema,
+    updateJobSchema,
+    jobIdParamsSchema,
+    visibilitySchema,
+    intakeSchema,
+    performedBySchema as jobPerformedBySchema,
+    jobsQuerySchema,
+    statsQuerySchema,
+    applicationIdParamsSchema,
+    applicationsQuerySchema,
+    applicationStatusSchema,
+    auditedDownloadQuerySchema,
+} from "../validators/adminCareers.validator.js";
 import {
     dashboardQuerySchema,
     bookingsQuerySchema,
@@ -122,6 +153,36 @@ router.delete("/hero/slides/:id", validateParams(slideIdParamsSchema), validateB
 router.put("/hero/order", validateBody(orderSchema), handleOrder);
 router.put("/hero/schedule", validateBody(scheduleSchema), handleScheduleSet);
 router.delete("/hero/schedule", validateBody(performedBySchema), handleScheduleClear);
+
+// ── Careers: job openings (each write creates an audit entry "career.job.<verb>") ──
+// An unknown or malformed :id answers 404 JOB_NOT_FOUND.
+router.get("/careers/jobs", validateQuery(jobsQuerySchema), handleJobList);
+router.post("/careers/jobs", validateBody(createJobSchema), handleJobCreate);
+router.get("/careers/jobs/:id", validateParams(jobIdParamsSchema), validateQuery(noInputSchema), handleJobGet);
+router.patch("/careers/jobs/:id", validateParams(jobIdParamsSchema), validateBody(updateJobSchema), handleJobUpdate);
+router.delete("/careers/jobs/:id", validateParams(jobIdParamsSchema), validateBody(jobPerformedBySchema), handleJobDelete);
+router.patch("/careers/jobs/:id/visibility", validateParams(jobIdParamsSchema), validateBody(visibilitySchema), handleJobVisibility);
+router.patch("/careers/jobs/:id/intake", validateParams(jobIdParamsSchema), validateBody(intakeSchema), handleJobIntake);
+router.post("/careers/jobs/:id/duplicate", validateParams(jobIdParamsSchema), validateBody(jobPerformedBySchema), handleJobDuplicate);
+router.post("/careers/jobs/:id/archive", validateParams(jobIdParamsSchema), validateBody(jobPerformedBySchema), handleJobArchive);
+router.post("/careers/jobs/:id/unarchive", validateParams(jobIdParamsSchema), validateBody(jobPerformedBySchema), handleJobUnarchive);
+router.get("/careers/jobs/:id/stats", validateParams(jobIdParamsSchema), validateQuery(statsQuerySchema), handleJobStats);
+
+// ── Careers: applicants (the resume's Cloudinary id is never sent; a download is a 5-minute signed link) ──
+router.get("/careers/jobs/:id/applications", validateParams(jobIdParamsSchema), validateQuery(applicationsQuerySchema), handleApplicationList);
+router.get("/careers/jobs/:id/applications.csv", validateParams(jobIdParamsSchema), validateQuery(auditedDownloadQuerySchema), handleApplicantsCsv);
+router.get(
+    "/careers/applications/:applicationId/resume",
+    validateParams(applicationIdParamsSchema),
+    validateQuery(auditedDownloadQuerySchema),
+    handleResumeLink
+);
+router.patch(
+    "/careers/applications/:applicationId",
+    validateParams(applicationIdParamsSchema),
+    validateBody(applicationStatusSchema),
+    handleApplicationStatus
+);
 
 // ── VM actions (each writes one audit entry) ──────────────────────────────────
 router.post("/vm/blocks", validateBody(slotTargetSchema), handleVmBlock);

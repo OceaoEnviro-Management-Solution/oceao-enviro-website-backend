@@ -5,6 +5,7 @@ import { getTotal } from "../services/visits.service.js";
 import { config } from "../config/env.js";
 import { SECURITY } from "../config/security.js";
 import { PARIVESH } from "../config/parivesh.js";
+import { CAREERS } from "../config/careers.js";
 
 const { rateLimits } = SECURITY;
 const FIFTEEN_MINUTES = rateLimits.windowMinutes * 60 * 1000;
@@ -66,6 +67,26 @@ const visitLimiter = createLimiter(SECURITY.visitRateLimit.limit, {
     },
 });
 
+// Job page views: 30 / hour / IP. Over the limit the view is not counted but the answer is still
+// 200 { counted: false }, so the job page never shows an error for it.
+const jobViewLimiter = createLimiter(CAREERS.viewRateLimit.limit, {
+    windowMs: CAREERS.viewRateLimit.windowMinutes * 60 * 1000,
+    standardHeaders: false,
+    handler: (req, res) => {
+        res.status(200).json(new ApiResponse(200, { counted: false }, "View recorded"));
+    },
+});
+
+// Job applications: 5 / hour / IP (the global /api limiter applies as well)
+const careersApplyLimiter = createLimiter(CAREERS.applyRateLimit.limit, {
+    windowMs: CAREERS.applyRateLimit.windowMinutes * 60 * 1000,
+});
+
+// General applications (a resume sent without a job): 5 / hour / IP, a counter of its own
+const careersGeneralLimiter = createLimiter(CAREERS.applyRateLimit.limit, {
+    windowMs: CAREERS.applyRateLimit.windowMinutes * 60 * 1000,
+});
+
 // Admin login: 5 attempts / 15 min / IP
 const adminLoginLimiter = createLimiter(rateLimits.adminLogin);
 
@@ -85,5 +106,5 @@ const adminSyncLimiter = createLimiter(1, {
 
 export {
     publicFormLimiter, globalLimiter, otpSendLimiter, otpVerifyLimiter, adminLoginLimiter, visitLimiter,
-    adminSyncLimiter, rateLimitControl,
+    adminSyncLimiter, jobViewLimiter, careersApplyLimiter, careersGeneralLimiter, rateLimitControl,
 };
